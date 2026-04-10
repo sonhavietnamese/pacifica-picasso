@@ -1,11 +1,17 @@
 'use client'
 
 import { env } from '@/env'
+import { USDP_MINT } from '@/lib/solana'
 import { usePrivy, useSigners } from '@privy-io/react-auth'
+import { useSplToken } from '@solana/react-hooks'
 
 export default function User() {
   const { ready, authenticated, user, login, logout } = usePrivy()
   const { addSigners } = useSigners()
+
+  const { balance, refresh, isFetching } = useSplToken(USDP_MINT.toBase58(), {
+    owner: user?.wallet?.address,
+  })
 
   if (!ready) return <div>Loading...</div>
 
@@ -56,10 +62,45 @@ export default function User() {
     console.log(data)
   }
 
+  const faucet = async () => {
+    if (!user) return
+    if (!user.wallet || !user.wallet.connectorType || user.wallet.connectorType !== 'embedded') return
+
+    const response = await fetch('/api/faucet', {
+      method: 'POST',
+      body: JSON.stringify({ wallet_id: user.wallet.id }),
+    })
+
+    const data = await response.json()
+    console.log(data)
+
+    await refresh()
+  }
+
+  const deposit = async () => {
+    if (!user) return
+    if (!user.wallet || !user.wallet.connectorType || user.wallet.connectorType !== 'embedded') return
+
+    const response = await fetch('/api/trade/deposit', {
+      method: 'POST',
+      body: JSON.stringify({ wallet_id: user.wallet.id }),
+    })
+
+    const data = await response.json()
+    console.log(data)
+  }
+
   return (
     <main>
-      <div>
-        <div>Authenticated: {authenticated ? 'Yes' : 'No'}</div>
+      <div className="flex flex-col gap-2">
+        <div>
+          <div>Authenticated: {authenticated ? 'Yes' : 'No'}</div>
+        </div>
+
+        <div>
+          <span>{user?.wallet?.address}</span>
+        </div>
+        <div>USDP: {isFetching ? 'Loading...' : balance?.amount}</div>
       </div>
       <div className="flex gap-2">
         <button className="bg-blue-500 text-white px-4 py-2 rounded-md" onClick={() => login()}>
@@ -71,6 +112,16 @@ export default function User() {
       </div>
 
       <div className="flex gap-2">
+        <button className="bg-blue-500 text-white px-4 py-2 rounded-md" onClick={deposit}>
+          DEPOSIT
+        </button>
+      </div>
+
+      <div className="flex gap-2">
+        <button className="bg-blue-500 text-white px-4 py-2 rounded-md" onClick={faucet}>
+          Faucet
+        </button>
+
         <button className="bg-blue-500 text-white px-4 py-2 rounded-md" onClick={addSigner}>
           Add Signer
         </button>
