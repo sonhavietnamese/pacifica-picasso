@@ -68,6 +68,7 @@ export async function buildPacificaDepositTransaction(
     { pubkey: PACIFICA_PROGRAM_ID, isSigner: false, isWritable: false },
   ]
 
+  // const { blockhash } = await connection.getLatestBlockhash()
   const instruction = new TransactionInstruction({
     programId: PACIFICA_PROGRAM_ID,
     keys,

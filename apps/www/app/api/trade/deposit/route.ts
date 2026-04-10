@@ -1,9 +1,10 @@
 import { buildPacificaDepositTransaction } from '@/lib/pacifica-deposit'
-import privy from '@/lib/privy'
+import privy, { authorizationContext } from '@/lib/privy'
 import { connection } from '@/lib/solana'
 import { PublicKey } from '@solana/web3.js'
 
 const DEFAULT_DEPOSIT_AMOUNT = 15
+const SOLANA_DEVNET_CAIP2 = 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'
 
 export async function POST(request: Request) {
   const body = (await request.json()) as { wallet_id?: string; amount?: number }
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
 
   const wallet = await privy.wallets().get(wallet_id)
 
-  if (!wallet) {
+  if (!wallet || !wallet.address) {
     return new Response('Wallet not found', { status: 404 })
   }
 
@@ -25,13 +26,17 @@ export async function POST(request: Request) {
 
   const { blockhash } = await connection.getLatestBlockhash()
   transaction.recentBlockhash = blockhash
+  transaction.feePayer = new PublicKey(wallet.address)
 
-  // sign with privy
-  const signature = await privy.wallets().solana().signTransaction(wallet_id, {
-    transaction: transaction.serialize(),
+  const serializedTx = transaction
+    .serialize({ requireAllSignatures: false, verifySignatures: false })
+    .toString('base64')
+
+  const { hash } = await privy.wallets().solana().signAndSendTransaction(wallet_id, {
+    caip2: SOLANA_DEVNET_CAIP2,
+    transaction: serializedTx,
+    authorization_context: authorizationContext,
   })
 
-  console.log('signature', signature)
-
-  return Response.json({ signature }, { status: 200 })
+  return Response.json({ hash }, { status: 200 })
 }

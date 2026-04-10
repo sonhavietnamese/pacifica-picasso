@@ -1,6 +1,7 @@
 'use client'
 
 import { env } from '@/env'
+import { useOpenOrders } from '@/hooks/use-open-orders'
 import { USDP_MINT } from '@/lib/solana'
 import { usePrivy, useSigners } from '@privy-io/react-auth'
 import { useSplToken } from '@solana/react-hooks'
@@ -8,6 +9,10 @@ import { useSplToken } from '@solana/react-hooks'
 export default function User() {
   const { ready, authenticated, user, login, logout } = usePrivy()
   const { addSigners } = useSigners()
+
+  const { orders } = useOpenOrders(user?.wallet?.address)
+
+  console.log(orders)
 
   const { balance, refresh, isFetching } = useSplToken(USDP_MINT.toBase58(), {
     owner: user?.wallet?.address,
@@ -47,21 +52,6 @@ export default function User() {
     console.log(signature)
   }
 
-  const createOrder = async () => {
-    if (!user) return
-    if (!user.wallet || !user.wallet.connectorType || user.wallet.connectorType !== 'embedded') return
-
-    const response = await fetch('/api/trades', {
-      method: 'POST',
-      body: JSON.stringify({
-        wallet_id: user.wallet.id,
-      }),
-    })
-
-    const data = await response.json()
-    console.log(data)
-  }
-
   const faucet = async () => {
     if (!user) return
     if (!user.wallet || !user.wallet.connectorType || user.wallet.connectorType !== 'embedded') return
@@ -82,6 +72,19 @@ export default function User() {
     if (!user.wallet || !user.wallet.connectorType || user.wallet.connectorType !== 'embedded') return
 
     const response = await fetch('/api/trade/deposit', {
+      method: 'POST',
+      body: JSON.stringify({ wallet_id: user.wallet.id }),
+    })
+
+    const data = await response.json()
+    console.log(data)
+  }
+
+  const createOrder = async () => {
+    if (!user) return
+    if (!user.wallet || !user.wallet.connectorType || user.wallet.connectorType !== 'embedded') return
+
+    const response = await fetch('/api/trade/orders/create', {
       method: 'POST',
       body: JSON.stringify({ wallet_id: user.wallet.id }),
     })
@@ -112,6 +115,9 @@ export default function User() {
       </div>
 
       <div className="flex gap-2">
+        <button className="bg-blue-500 text-white px-4 py-2 rounded-md" onClick={createOrder}>
+          CREATE ORDER
+        </button>
         <button className="bg-blue-500 text-white px-4 py-2 rounded-md" onClick={deposit}>
           DEPOSIT
         </button>
