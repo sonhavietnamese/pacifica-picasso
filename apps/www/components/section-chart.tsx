@@ -1,21 +1,20 @@
 'use client'
 
-import { Liveline, useDrawLinesStore, type LivelinePoint } from '@/lib/linelive'
-import { SOLUSD_PRICE_FEED } from '@/lib/solana'
-import { cn } from '@/lib/utils'
+import { usePacificaPriceStream } from '@/hooks/use-pacifica-price-stream'
+import { DrawLine, Liveline, useDrawLinesStore, type LivelinePoint } from '@/lib/linelive'
 import { useCallback, useRef, useState } from 'react'
-import { PriceArrowIndicator } from './price-arrow-indicator'
+import { DotBackground } from './ui/dot-background'
+import { PriceArrowIndicator } from './ui/price-arrow-indicator'
 
 const MAX_POINTS = 4000
-const EXPONENT_SCALE = Math.pow(10, SOLUSD_PRICE_FEED.exponent)
-// const CROSSING_CHECK_INTERVAL = 2000
+const CHART_SYMBOL = 'HYPE'
 
-/** Compare ticks and momentum at 4 decimal places (USD) */
-function roundPrice4(rawPrice: number): number {
-  return Math.round(rawPrice * 10_000) / 10_000
+/** Coarse bucket for arrow direction only — do not use this to drop live ticks. */
+function roundPriceDirection(rawPrice: number): number {
+  return Math.round(rawPrice * 10) / 10
 }
 
-export function SectionCanvas() {
+export function SectionChart() {
   const drawnLines = useDrawLinesStore((s) => s.lines)
   const addLine = useDrawLinesStore((s) => s.addLine)
   const setCrossCount = useDrawLinesStore((s) => s.setCrossCount)
@@ -23,40 +22,43 @@ export function SectionCanvas() {
   const [data, setData] = useState<LivelinePoint[]>([])
   const [value, setValue] = useState(0)
   const [priceDirection, setPriceDirection] = useState<'up' | 'down'>('up')
-  const lastPrice4Ref = useRef<number | null>(null)
+  const lastDirectionBucketRef = useRef<number | null>(null)
 
   const onPriceUpdate = useCallback((rawPrice: number) => {
-    const price4 = roundPrice4(rawPrice)
-    if (price4 === lastPrice4Ref.current) return
-
-    const prev4 = lastPrice4Ref.current
-    lastPrice4Ref.current = price4
-
-    if (prev4 !== null) {
-      if (price4 > prev4) setPriceDirection('up')
-      else if (price4 < prev4) setPriceDirection('down')
+    const bucket = roundPriceDirection(rawPrice)
+    const prevBucket = lastDirectionBucketRef.current
+    lastDirectionBucketRef.current = bucket
+    if (prevBucket !== null) {
+      if (bucket > prevBucket) setPriceDirection('up')
+      else if (bucket < prevBucket) setPriceDirection('down')
     }
 
-    const scaled = rawPrice * EXPONENT_SCALE
     const now = Date.now() / 1000
-    const pt: LivelinePoint = { time: now, value: scaled }
+    const pt: LivelinePoint = { time: now, value: rawPrice }
     setData((prev) => {
       const next = [...prev, pt]
       return next.length > MAX_POINTS ? next.slice(-MAX_POINTS) : next
     })
-    setValue(scaled)
+    setValue(rawPrice)
   }, [])
+
+  const handleDrawEnd = useCallback(
+    async (line: DrawLine) => {
+      addLine(line)
+    },
+    [addLine]
+  )
+
+  usePacificaPriceStream(CHART_SYMBOL, onPriceUpdate)
 
   const hasData = data.length > 0 && value > 0
 
   return (
-    <section className="bg-foreground rounded-xl flex-1 flex relative overflow-hidden p-6">
-      <div
-        className={cn('absolute bg-[radial-gradient(#404040_1px,transparent_1px)] inset-0 z-0 bg-size-[28px_28px]')}
-      />
+    <section className="bg-foreground rounded-xl relative overflow-hidden p-6 w-full h-full">
+      <DotBackground />
       <div className="flex flex-col w-fit h-full relative">
         <div className="flex justify-between flex-col z-20">
-          <h1 className="font-druk text-2xl text-white z-1">SOL/USD</h1>
+          <h1 className="font-druk text-2xl text-white z-1">{CHART_SYMBOL}/USD</h1>
           <div className="flex gap-2 items-center">
             {hasData && <PriceArrowIndicator direction={priceDirection} />}
             <span className="text-lg font-druk text-white/70">
@@ -68,33 +70,24 @@ export function SectionCanvas() {
 
       <div className="w-full h-full absolute inset-0 z-10">
         <Liveline
+          color="#F7931A"
           data={data}
           value={value}
-          color="#9945FF"
           loading={!hasData}
-          exaggerate
+          exaggerate={false}
           priceLine={{ direction: 'vertical' }}
           futureSpace={0.4}
-          valueMomentumColor
           grid={false}
+          badge={false}
+          momentum
           window={30}
           draw={{ enabled: true, stroke: '#14F195', strokeWidth: 2 }}
           drawLines={drawnLines}
-          // onDrawEnd={handleDrawEnd}
+          onDrawEnd={handleDrawEnd}
           onCrossing={setCrossCount}
           formatValue={(v) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`}
         />
       </div>
-      {/* <aside className="absolute bottom-9 left-5">
-        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
-          {isConnecting && 'Connecting to Solana...'}
-          {isConnected && !hasData && 'Waiting for first price...'}
-          {isConnected && hasData && `Live — ${data.length} ticks`}
-          {error && `Error: ${error}`}
-          {!isConnecting && !isConnected && !error && 'Disconnected'}
-        </p>
-      </aside>
-      <Onboarding /> */}
     </section>
   )
 }

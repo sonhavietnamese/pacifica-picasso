@@ -1,11 +1,20 @@
 import type { Metadata } from 'next'
-import { Geist } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/providers'
+import localFont from 'next/font/local'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const inter = Inter({
+  variable: '--font-inter',
   subsets: ['latin'],
+})
+
+const drukWideHeavyItalic = localFont({
+  src: '../assets/fonts/Druk-WideHeavyItalic.ttf',
+  variable: '--font-druk-wide',
+  weight: '900',
+  style: 'italic',
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -18,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} antialiased`}>
+    <html lang="en" className={`${inter.variable} ${drukWideHeavyItalic.variable} antialiased`}>
       <body>
         <Providers>{children}</Providers>
       </body>
