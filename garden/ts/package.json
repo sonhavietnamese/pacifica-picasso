@@ -3,6 +3,10 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "start": "bun run index.ts",
+    "btc-prices": "bun run index.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
@@ -10,7 +14,6 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "pacifica-ts-sdk": "^0.1.0",
     "pacifica.js": "^4.0.0"
   }
 }

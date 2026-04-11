@@ -1,19 +1,40 @@
 import { PacificaClient } from 'pacifica.js'
-import {} from 'pacifica-ts-sdk'
+
+/** Perp symbol on Pacifica (see REST `getPrices` / WS `prices`). */
+const SYMBOL = 'BTC'
 
 const client = new PacificaClient({
-  privateKey: process.env.PRIVATE_KEY,
   testnet: true,
 })
 
-const limitOrder = await client.api.createLimitOrder({
-  symbol: 'BTC',
-  price: '80000',
-  amount: '0.01',
-  side: 'bid',
-  tif: 'GTC',
-  reduce_only: false,
-  client_order_id: crypto.randomUUID(),
+client.ws.on('open', () => {
+  console.log('WebSocket connected — subscribing to prices')
+  client.ws.subscribePrices()
 })
 
-console.log('Limit order:', limitOrder)
+client.ws.on('prices', (prices) => {
+  const p = prices.find((row) => row.symbol === SYMBOL)
+  if (!p) return
+  const ts = new Date(p.timestamp).toISOString()
+  console.log(
+    `[${ts}] ${p.symbol} mark=${p.mark} mid=${p.mid} oracle=${p.oracle} funding=${p.funding} vol24h=${p.volume_24h}`
+  )
+})
+
+client.ws.on('error', (err) => {
+  console.error('WebSocket error:', err)
+})
+
+client.ws.on('close', (code, reason) => {
+  console.log('WebSocket closed:', code, reason?.toString?.() ?? reason)
+})
+
+client.connect()
+
+function shutdown() {
+  client.disconnect()
+  process.exit(0)
+}
+
+process.on('SIGINT', shutdown)
+process.on('SIGTERM', shutdown)

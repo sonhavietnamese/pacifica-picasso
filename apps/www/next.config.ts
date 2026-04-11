@@ -1,18 +1,17 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  // webpack: (config) => {
-  //   // ...
-  //   config.externals['@solana/kit'] = 'commonjs @solana/kit'
-  //   config.externals['@solana-program/memo'] = 'commonjs @solana-program/memo'
-  //   config.externals['@solana-program/system'] = 'commonjs @solana-program/system'
-  //   config.externals['@solana-program/token'] = 'commonjs @solana-program/token'
-  //   return config
-  // },
-
   devIndicators: {
     position: 'bottom-right',
+  },
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
 }
 
