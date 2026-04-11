@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
   //   config.externals['@solana-program/token'] = 'commonjs @solana-program/token'
   //   return config
   // },
+
+  devIndicators: {
+    position: 'bottom-right',
+  },
 }
 
 export default nextConfig

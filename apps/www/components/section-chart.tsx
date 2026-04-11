@@ -54,14 +54,14 @@ export function SectionChart() {
   const hasData = data.length > 0 && value > 0
 
   return (
-    <section className="bg-foreground rounded-xl relative overflow-hidden p-6 w-full h-full">
+    <section className="bg-foreground rounded-xl relative overflow-hidden p-3 w-full h-full">
       <DotBackground />
       <div className="flex flex-col w-fit h-full relative">
         <div className="flex justify-between flex-col z-20">
-          <h1 className="font-druk text-2xl text-white z-1">{CHART_SYMBOL}/USD</h1>
+          <h1 className="font-druk text-xl text-white z-1">{CHART_SYMBOL}/USD</h1>
           <div className="flex gap-2 items-center">
             {hasData && <PriceArrowIndicator direction={priceDirection} />}
-            <span className="text-lg font-druk text-white/70">
+            <span className="text-sm font-druk text-white/70">
               {value.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
             </span>
           </div>
@@ -76,10 +76,11 @@ export function SectionChart() {
           loading={!hasData}
           exaggerate={false}
           priceLine={{ direction: 'vertical' }}
-          futureSpace={0.4}
+          futureSpace={0.5}
           grid={false}
           badge={false}
           momentum
+          scrub={false}
           window={30}
           draw={{ enabled: true, stroke: '#14F195', strokeWidth: 2 }}
           drawLines={drawnLines}

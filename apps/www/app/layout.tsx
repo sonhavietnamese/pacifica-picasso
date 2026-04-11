@@ -1,11 +1,12 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
+
 import Providers from '@/components/providers'
+import type { Metadata } from 'next'
+import { Hanken_Grotesk } from 'next/font/google'
 import localFont from 'next/font/local'
 
-const inter = Inter({
-  variable: '--font-inter',
+const hankenGrotesk = Hanken_Grotesk({
+  variable: '--font-hanken-grotesk',
   subsets: ['latin'],
 })
 
@@ -27,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${drukWideHeavyItalic.variable} antialiased`}>
+    <html lang="en" className={`${hankenGrotesk.variable} ${drukWideHeavyItalic.variable} antialiased`}>
       <body>
         <Providers>{children}</Providers>
       </body>
