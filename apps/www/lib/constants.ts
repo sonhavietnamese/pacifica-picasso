@@ -3,3 +3,5 @@ export const PACIFICA_API_ENDPOINTS = {
   CREATE_ORDER: `${PACIFICA_API_BASE}/orders/create`,
   GET_OPEN_ORDERS: `${PACIFICA_API_BASE}/orders`,
 }
+
+export const PACIFICA_WS_URL = 'wss://test-ws.pacifica.fi/ws'

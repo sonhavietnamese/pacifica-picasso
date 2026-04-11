@@ -1,9 +1,3 @@
-import User from '@/components/user'
-
 export default function Page() {
-  return (
-    <div>
-      <User />
-    </div>
-  )
+  return <main className="w-screen h-screen"></main>
 }

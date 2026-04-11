@@ -1,3 +1,10 @@
+import { ClassValue, clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
 export function getDiscordAvatar(userId: string, avatar: string) {
   return `https://cdn.discordapp.com/avatars/${userId}/${avatar}.webp?size=96`
 }

@@ -7,18 +7,12 @@ const DEPOSIT_DECIMALS = 6
 
 const u64Encoder = getU64Encoder()
 
-/**
- * Anchor-style discriminator: sha256("global:{name}")[0..8] via Web Crypto (no Node `crypto`).
- */
 async function anchorDiscriminator(name: string): Promise<Uint8Array> {
   const preimage = new TextEncoder().encode(`global:${name}`)
   const digest = await crypto.subtle.digest('SHA-256', preimage)
   return new Uint8Array(digest).slice(0, 8)
 }
 
-/**
- * Instruction payload: 8-byte Anchor discriminator + u64 LE amount (@solana/kit codec).
- */
 export async function buildDepositInstructionData(amount: number): Promise<Uint8Array> {
   const amountRaw = BigInt(Math.round(amount * 10 ** DEPOSIT_DECIMALS))
   const disc = await anchorDiscriminator('deposit')
@@ -29,7 +23,6 @@ export async function buildDepositInstructionData(amount: number): Promise<Uint8
   return out
 }
 
-/** Event authority PDA — uses `@solana/kit` `getProgramDerivedAddress` (same result as web3.js). */
 export async function getDepositEventAuthority(): Promise<PublicKey> {
   const [pda] = await getProgramDerivedAddress({
     programAddress: address(PACIFICA_PROGRAM_ID.toBase58()),
@@ -68,7 +61,6 @@ export async function buildPacificaDepositTransaction(
     { pubkey: PACIFICA_PROGRAM_ID, isSigner: false, isWritable: false },
   ]
 
-  // const { blockhash } = await connection.getLatestBlockhash()
   const instruction = new TransactionInstruction({
     programId: PACIFICA_PROGRAM_ID,
     keys,
