@@ -40,3 +40,7 @@ export function prepareMessage(
   const sorted = sortJsonKeys(data) as Record<string, unknown>
   return JSON.stringify(sorted)
 }
+
+export function roundPriceDirection(rawPrice: number): number {
+  return Math.round(rawPrice * 10) / 10
+}

@@ -2,17 +2,14 @@
 
 import { usePacificaPriceStream } from '@/hooks/use-pacifica-price-stream'
 import { DrawLine, Liveline, useDrawLinesStore, type LivelinePoint } from '@/lib/linelive'
+import { roundPriceDirection } from '@/lib/utils'
+import { useTokenStore } from '@/stores/token'
 import { useCallback, useRef, useState } from 'react'
-import { DotBackground } from './ui/dot-background'
-import { PriceArrowIndicator } from './ui/price-arrow-indicator'
+import { TextMorph } from 'torph/react'
+import { DotBackground } from '../ui/dot-background'
+import { PriceArrowIndicator } from '../ui/price-arrow-indicator'
 
 const MAX_POINTS = 4000
-const CHART_SYMBOL = 'HYPE'
-
-/** Coarse bucket for arrow direction only — do not use this to drop live ticks. */
-function roundPriceDirection(rawPrice: number): number {
-  return Math.round(rawPrice * 10) / 10
-}
 
 export function SectionChart() {
   const drawnLines = useDrawLinesStore((s) => s.lines)
@@ -24,8 +21,11 @@ export function SectionChart() {
   const [priceDirection, setPriceDirection] = useState<'up' | 'down'>('up')
   const lastDirectionBucketRef = useRef<number | null>(null)
 
+  const { token } = useTokenStore()
+
   const onPriceUpdate = useCallback((rawPrice: number) => {
     const bucket = roundPriceDirection(rawPrice)
+
     const prevBucket = lastDirectionBucketRef.current
     lastDirectionBucketRef.current = bucket
     if (prevBucket !== null) {
@@ -49,7 +49,7 @@ export function SectionChart() {
     [addLine]
   )
 
-  usePacificaPriceStream(CHART_SYMBOL, onPriceUpdate)
+  usePacificaPriceStream(token.symbol, onPriceUpdate)
 
   const hasData = data.length > 0 && value > 0
 
@@ -58,7 +58,11 @@ export function SectionChart() {
       <DotBackground />
       <div className="flex flex-col w-fit h-full relative">
         <div className="flex justify-between flex-col z-20">
-          <h1 className="font-druk text-xl text-white z-1">{CHART_SYMBOL}/USD</h1>
+          <div className="font-druk text-xl text-white z-1 flex items-center gap-1">
+            <TextMorph className="">{token.symbol}</TextMorph>
+            /USD
+          </div>
+
           <div className="flex gap-2 items-center">
             {hasData && <PriceArrowIndicator direction={priceDirection} />}
             <span className="text-sm font-druk text-white/70">
@@ -70,7 +74,7 @@ export function SectionChart() {
 
       <div className="w-full h-full absolute inset-0 z-10">
         <Liveline
-          color="#F7931A"
+          color={token.color}
           data={data}
           value={value}
           loading={!hasData}
@@ -81,7 +85,7 @@ export function SectionChart() {
           badge={false}
           momentum
           scrub={false}
-          window={30}
+          window={120}
           draw={{ enabled: true, stroke: '#14F195', strokeWidth: 2 }}
           drawLines={drawnLines}
           onDrawEnd={handleDrawEnd}

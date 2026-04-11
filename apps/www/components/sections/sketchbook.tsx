@@ -2,11 +2,11 @@
 
 import { CardArtist } from '../ui/card-artist'
 
-export function SectionArtists() {
+export function SectionSketchbook() {
   return (
     <section className="pt-2 p-0 relative h-full flex flex-col">
       <div className="flex flex-col mb-2">
-        <h2 className="font-druk text-base text-white ml-1">Lit Artists</h2>
+        <h2 className="font-druk text-base text-white ml-1">Your Sketchbook</h2>
       </div>
       <div className="w-full h-full rounded-xl overflow-auto hide-scrollbar">
         <ul className="w-full h-full rounded-xl space-y-2">
@@ -45,11 +45,11 @@ export function SectionArtists() {
             texture="none"
           />
 
-          <div className="w-full h-px"></div>
+          {/* <div className="w-full h-px"></div> */}
         </ul>
       </div>
 
-      <figure className="w-full h-auto absolute bottom-0 left-0 z-10">
+      {/* <figure className="w-full h-auto absolute bottom-0 left-0 z-10">
         <svg
           className="w-full h-full"
           width="320"
@@ -67,7 +67,7 @@ export function SectionArtists() {
             </linearGradient>
           </defs>
         </svg>
-      </figure>
+      </figure> */}
     </section>
   )
 }

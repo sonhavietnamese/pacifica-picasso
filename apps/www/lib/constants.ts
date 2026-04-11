@@ -1,3 +1,5 @@
+import { Token } from '@/types'
+
 export const PACIFICA_API_BASE = 'https://test-api.pacifica.fi/api/v1'
 export const PACIFICA_API_ENDPOINTS = {
   CREATE_ORDER: `${PACIFICA_API_BASE}/orders/create`,
@@ -5,3 +7,30 @@ export const PACIFICA_API_ENDPOINTS = {
 }
 
 export const PACIFICA_WS_URL = 'wss://test-ws.pacifica.fi/ws'
+
+export const TOKENS: Token[] = [
+  {
+    symbol: 'BTC',
+    color: '#F7931B',
+  },
+  {
+    symbol: 'SOL',
+    color: '#DB1FFF',
+  },
+  {
+    symbol: 'PENGU',
+    color: '#8CB3FE',
+  },
+  {
+    symbol: 'TRUMP',
+    color: '#D9B75E',
+  },
+  {
+    symbol: 'GOLD',
+    color: '#E9BC3C',
+  },
+  {
+    symbol: 'NVDA',
+    color: '#266524',
+  },
+]

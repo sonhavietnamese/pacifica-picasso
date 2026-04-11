@@ -11,3 +11,8 @@ export interface PriceFeed {
   min_channel: string
   state: string
 }
+
+export interface Token {
+  symbol: string
+  color: string
+}
