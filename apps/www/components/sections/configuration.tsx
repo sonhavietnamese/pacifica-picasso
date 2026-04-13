@@ -1,4 +1,17 @@
+import NumberFlow from '@number-flow/react'
+import { DropdownMenu } from 'radix-ui'
+import { useMemo, useState } from 'react'
+
+export const RISKS = [1, 2, 3, 5, 8]
+export const EXAMPLE_FUND = 120
+
 export default function SectionConfiguration() {
+  const [risk, setRisk] = useState(5)
+
+  const riskAmount = useMemo(() => {
+    return EXAMPLE_FUND * (risk / 100)
+  }, [risk])
+
   return (
     <section className="p-4 rounded-xl bg-[#171717] mt-2 gap-2 flex flex-col">
       <div>
@@ -12,15 +25,39 @@ export default function SectionConfiguration() {
           </div>
 
           <div className="flex items-center justify-end">
-            <div className="bg-black rounded-lg p-1 px-2 w-16 text-center">
-              <span className="font-druk leading-none text-sm">5%</span>
-            </div>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger>
+                <button className="bg-black rounded-lg p-1.5 px-2 w-16 text-center cursor-pointer">
+                  <span className="font-druk leading-none text-sm">{risk}%</span>
+                </button>
+              </DropdownMenu.Trigger>
+
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  side="bottom"
+                  className="bg-black rounded-xl text-center cursor-pointer space-y-1 p-1"
+                  sideOffset={10}
+                >
+                  {RISKS.filter((r) => r !== risk).map((r) => (
+                    <DropdownMenu.Item
+                      className="bg-black rounded-lg p-2 px-3 text-center cursor-pointer font-druk leading-none text-sm text-white hover:bg-white/10"
+                      key={r}
+                      onClick={() => setRisk(r)}
+                    >
+                      {r}%
+                    </DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
           </div>
 
           <div className=""></div>
 
           <div className="flex mr-1 flex-col">
-            <span className="text-right text-white/70 text-sm mr-1">~$20</span>
+            <span className="text-right text-white/70 text-sm mr-1">
+              <NumberFlow prefix="~$" value={riskAmount}></NumberFlow>
+            </span>
           </div>
         </div>
       </div>
@@ -30,7 +67,7 @@ export default function SectionConfiguration() {
           <span className="font-druk text-white text-base leading-none">Brushes</span>
         </div>
 
-        <div className="font-sans flex h-auto gap-1 mt-2">
+        <div className="font-sans flex h-auto gap-2 mt-2">
           <div className="w-full h-full overflow-x-auto hide-scrollbar">
             <ul className="w-full h-full flex gap-1">
               {Array.from({ length: 10 }).map((_, index) => (

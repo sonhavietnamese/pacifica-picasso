@@ -26,15 +26,15 @@ export function CardSketch({ state = 'pending' }: CardSketchProps) {
       </aside>
 
       <div className="relative z-1 flex">
-        {/* <aside className="absolute top-0 right-0 bg-black rounded-lg p-2 px-2.5">
+        <aside className="absolute -top-1 -right-1 bg-black rounded-lg p-2 px-2.5">
           <span className="leading-none font-druk text-white text-sm">X3</span>
-        </aside> */}
-
-        <aside className="absolute top-0 right-0 bg-black rounded-lg p-2 px-2.5">
-          <span className="leading-none text-white text-sm font-medium">Patient</span>
         </aside>
 
-        <div className="w-[100px] h-[80px] p-2 rounded flex items-center justify-center bg-[#1E1E1E]">
+        {/* <aside className="absolute top-0 right-0 bg-black rounded-lg p-2 px-2.5">
+          <span className="leading-none text-white text-sm font-medium">Patient</span>
+        </aside> */}
+
+        <div className="w-[90px] h-[80px] p-2 rounded flex items-center justify-center bg-[#1E1E1E]">
           <figure className="w-full h-full aspect-square overflow-hidden">
             <svg
               className="w-full h-full"
@@ -52,6 +52,23 @@ export function CardSketch({ state = 'pending' }: CardSketchProps) {
               />
             </svg>
           </figure>
+        </div>
+
+        <div className="flex flex-col text-xs gap-1 justify-center font-medium ml-2">
+          <div className="grid grid-cols-2">
+            <span className="text-white/70">Entry</span>
+            <span className="text-white font-bold">Waiting</span>
+          </div>
+
+          <div className="grid grid-cols-2">
+            <span className="text-white/70">TP</span>
+            <span className="text-white font-bold">12,342</span>
+          </div>
+
+          <div className="grid grid-cols-2">
+            <span className="text-white/70">SL</span>
+            <span className="text-white font-bold">12,342</span>
+          </div>
         </div>
       </div>
     </li>
