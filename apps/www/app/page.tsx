@@ -1,20 +1,16 @@
-// import { SectionChart } from '@/components/section-chart'
-// import { Status } from '@/components/sections/status'
-
 'use client'
 
-import ConnectButton from '@/components/connect-button'
-import { SectionChart } from '@/components/sections/chart'
-import { SectionArtists } from '@/components/sections/artists'
-import Feeds from '@/components/sections/feeds'
-import { cn } from '@/lib/utils'
-import { usePrivy } from '@privy-io/react-auth'
-import { AnimatePresence, motion } from 'motion/react'
-import { SectionSketchbook } from '@/components/sections/sketchbook'
 import { Brand } from '@/components/brand'
+import ConnectButton from '@/components/connect-button'
+import { SectionArtists } from '@/components/sections/artists'
+import { SectionChart } from '@/components/sections/chart'
+import Feeds from '@/components/sections/feeds'
+import SectionRight from '@/components/sections/right'
+import { SectionSketchbook } from '@/components/sections/sketchbook'
+import { usePrivy } from '@privy-io/react-auth'
 
 export default function Page() {
-  const { ready, authenticated } = usePrivy()
+  const { ready } = usePrivy()
 
   if (!ready) return <div className="text-white">Loading...</div>
 
@@ -47,15 +43,7 @@ export default function Page() {
             </section>
           </section>
 
-          <AnimatePresence>
-            {authenticated && (
-              <motion.section className="" animate={{ width: 320 }} exit={{ width: 0 }}>
-                <motion.section exit={{ opacity: 0 }}>
-                  <h1>Hello</h1>
-                </motion.section>
-              </motion.section>
-            )}
-          </AnimatePresence>
+          <SectionRight />
         </section>
       </section>
 

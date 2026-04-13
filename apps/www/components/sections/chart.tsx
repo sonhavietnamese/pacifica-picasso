@@ -54,7 +54,27 @@ export function SectionChart() {
   const hasData = data.length > 0 && value > 0
 
   return (
-    <section className="bg-foreground rounded-xl relative overflow-hidden p-3 w-full h-full">
+    <section className="rounded-xl relative overflow-hidden bg-[linear-gradient(180deg,#11131E_19%,#56507D_100%)] p-3 w-full h-full">
+      <div
+        className="pointer-events-none absolute inset-0 z-10 h-full w-full shadow-[inset_0_-130px_80px_-30px_#c300ea]"
+        aria-hidden
+      />
+
+      <div
+        className="pointer-events-none absolute inset-0 z-11 h-full w-full shadow-[inset_0_-70px_50px_-8px_rgba(131,68,214,0.5)]"
+        aria-hidden
+      />
+
+      <div
+        className="pointer-events-none absolute inset-0 z-12 h-full w-full shadow-[inset_0_6px_15px_-2px_rgba(147,26,223,0.2)]"
+        aria-hidden
+      />
+
+      <div
+        className="pointer-events-none absolute inset-0 z-13 h-full w-full mix-blend-plus-lighter shadow-[inset_0_-48px_50px_-20px_rgba(255,255,255,0.5)]"
+        aria-hidden
+      />
+
       <DotBackground />
       <div className="flex flex-col w-fit h-full relative">
         <div className="flex justify-between flex-col z-20">

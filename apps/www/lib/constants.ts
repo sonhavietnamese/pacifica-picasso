@@ -18,15 +18,11 @@ export const TOKENS: Token[] = [
     color: '#DB1FFF',
   },
   {
-    symbol: 'PENGU',
-    color: '#8CB3FE',
-  },
-  {
     symbol: 'TRUMP',
     color: '#D9B75E',
   },
   {
-    symbol: 'GOLD',
+    symbol: 'XAU',
     color: '#E9BC3C',
   },
   {
