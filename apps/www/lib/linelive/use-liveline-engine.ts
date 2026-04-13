@@ -871,6 +871,7 @@ export function useLivelineEngine(
           points: path.map((p) => ({ ...p })),
           stroke: cfg.draw?.stroke,
           strokeWidth: cfg.draw?.strokeWidth,
+          texture: cfg.draw?.texture,
         })
       }
       drawPathRef.current = []
@@ -2350,7 +2351,7 @@ export function useLivelineEngine(
     if (drawLayout && (cfg.draw?.enabled || drawLines.length > 0)) {
       const activeLine =
         isDrawingRef.current && drawPathRef.current.length >= 2
-          ? { points: drawPathRef.current, stroke: cfg.draw?.stroke, strokeWidth: cfg.draw?.strokeWidth }
+          ? { points: drawPathRef.current, stroke: cfg.draw?.stroke, strokeWidth: cfg.draw?.strokeWidth, texture: cfg.draw?.texture }
           : null
       drawUserLines(
         ctx,
@@ -2359,6 +2360,7 @@ export function useLivelineEngine(
         activeLine,
         cfg.draw?.stroke ?? cfg.palette.line,
         cfg.draw?.strokeWidth ?? 2,
+        cfg.draw?.texture,
         cfg.formatValue,
         cfg.palette.bgRgb,
         drawNow,

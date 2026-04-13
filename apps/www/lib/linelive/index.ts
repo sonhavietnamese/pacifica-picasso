@@ -21,4 +21,6 @@ export type {
   DrawLine,
   DrawLinePoint,
   DrawConfig,
+  DrawLineTexture,
+  GradientStop,
 } from './types'

@@ -1,4 +1,92 @@
-import type { ChartLayout, DrawLine } from '../types'
+import type { ChartLayout, DrawLine, DrawLineTexture } from '../types'
+
+// ── Image texture cache ──────────────────────────────────────────────────
+
+const imageCache = new Map<string, HTMLImageElement>()
+const loadingImages = new Set<string>()
+
+function ensureImageLoaded(src: string): HTMLImageElement | null {
+  const cached = imageCache.get(src)
+  if (cached) return cached
+  if (loadingImages.has(src)) return null
+  loadingImages.add(src)
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.onload = () => {
+    imageCache.set(src, img)
+    loadingImages.delete(src)
+  }
+  img.onerror = () => {
+    loadingImages.delete(src)
+  }
+  img.src = src
+  return null
+}
+
+/** Resolve a DrawLineTexture into a CanvasStrokeStyle for ctx.strokeStyle. */
+function resolveStrokeStyle(
+  ctx: CanvasRenderingContext2D,
+  texture: DrawLineTexture | undefined,
+  fallbackColor: string,
+  pts: [number, number][],
+  strokeWidth: number,
+): string | CanvasGradient | CanvasPattern {
+  if (!texture) return fallbackColor
+
+  switch (texture.type) {
+    case 'solid':
+      return texture.color
+
+    case 'gradient': {
+      if (pts.length < 2 || texture.stops.length < 2) return fallbackColor
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      for (const [x, y] of pts) {
+        if (x < minX) minX = x
+        if (y < minY) minY = y
+        if (x > maxX) maxX = x
+        if (y > maxY) maxY = y
+      }
+      const angle = ((texture.angle ?? 0) * Math.PI) / 180
+      const cx = (minX + maxX) / 2
+      const cy = (minY + maxY) / 2
+      const dx = (maxX - minX) / 2
+      const dy = (maxY - minY) / 2
+      const diag = Math.sqrt(dx * dx + dy * dy) || 1
+      const gx = Math.cos(angle) * diag
+      const gy = Math.sin(angle) * diag
+      const grad = ctx.createLinearGradient(cx - gx, cy - gy, cx + gx, cy + gy)
+      for (const stop of texture.stops) {
+        grad.addColorStop(stop.offset, stop.color)
+      }
+      return grad
+    }
+
+    case 'image': {
+      const img = ensureImageLoaded(texture.src)
+      if (!img) return fallbackColor
+      const pattern = ctx.createPattern(img, texture.repetition ?? 'repeat')
+      if (!pattern) return fallbackColor
+      if (strokeWidth > 0 && img.naturalHeight > 0) {
+        const scale = strokeWidth / img.naturalHeight
+        pattern.setTransform(new DOMMatrix().scaleSelf(scale, scale))
+      }
+      return pattern
+    }
+
+    default:
+      return fallbackColor
+  }
+}
+
+/** Extract a solid color for dots/pills from a texture definition. */
+function getRepresentativeColor(texture: DrawLineTexture | undefined, fallback: string): string {
+  if (!texture) return fallback
+  switch (texture.type) {
+    case 'solid': return texture.color
+    case 'gradient': return texture.stops[0]?.color ?? fallback
+    case 'image': return fallback
+  }
+}
 
 // ── Cross particles (spawned when price crosses a drawn line) ────────────
 
@@ -50,6 +138,7 @@ export function drawUserLines(
   activeLine: DrawLine | null,
   defaultStroke: string,
   defaultWidth: number,
+  defaultTexture: DrawLineTexture | undefined,
   formatValue: (v: number) => string,
   bgRgb: [number, number, number],
   now: number,
@@ -57,17 +146,17 @@ export function drawUserLines(
 ): void {
   for (let i = 0; i < lines.length; i++) {
     const crossPct = Math.min(100, (crossCounts[i] ?? 0) * 5)
-    renderPath(ctx, layout, lines[i], defaultStroke, defaultWidth, formatValue, bgRgb, false, now, crossPct)
+    renderPath(ctx, layout, lines[i], defaultStroke, defaultWidth, defaultTexture, formatValue, bgRgb, false, now, crossPct)
   }
   if (activeLine) {
-    renderPath(ctx, layout, activeLine, defaultStroke, defaultWidth, formatValue, bgRgb, true, now, 0)
+    renderPath(ctx, layout, activeLine, defaultStroke, defaultWidth, defaultTexture, formatValue, bgRgb, true, now, 0)
   }
 }
 
 function drawSmoothPath(
   ctx: CanvasRenderingContext2D,
   pts: [number, number][],
-  stroke: string,
+  stroke: string | CanvasGradient | CanvasPattern,
   width: number,
   alpha: number,
 ) {
@@ -119,6 +208,7 @@ function renderPath(
   line: DrawLine,
   defaultStroke: string,
   defaultWidth: number,
+  defaultTexture: DrawLineTexture | undefined,
   formatValue: (v: number) => string,
   bgRgb: [number, number, number],
   isActive: boolean,
@@ -128,9 +218,13 @@ function renderPath(
   const pts = line.points
   if (pts.length < 2) return
 
-  const stroke = line.stroke ?? defaultStroke
+  const solidColor = line.stroke ?? defaultStroke
+  const texture = line.texture ?? defaultTexture
   const width = line.strokeWidth ?? defaultWidth
   const screenPts: [number, number][] = pts.map(p => [layout.toX(p.time), layout.toY(p.value)])
+
+  const strokeStyle = resolveStrokeStyle(ctx, texture, solidColor, screenPts, width)
+  const dotColor = getRepresentativeColor(texture, solidColor)
 
   // Find the split point where the price has "consumed" the drawn line
   let splitIdx = -1
@@ -152,34 +246,27 @@ function renderPath(
   const noneConsumed = splitIdx === 0 || (splitIdx === -1 && !allConsumed)
 
   if (noneConsumed || isActive) {
-    // All future or active drawing — single pass
-    drawSmoothPath(ctx, screenPts, stroke, width, isActive ? 0.7 : 0.35)
+    drawSmoothPath(ctx, screenPts, strokeStyle, width, isActive ? 0.7 : 0.35)
   } else if (allConsumed) {
-    // Fully consumed — draw at full opacity
-    drawSmoothPath(ctx, screenPts, stroke, width, 1.0)
+    drawSmoothPath(ctx, screenPts, strokeStyle, width, 1.0)
   } else {
-    // Partially consumed — split rendering
     const prev = screenPts[splitIdx - 1]
     const next = screenPts[splitIdx]
     const sx = prev[0] + (next[0] - prev[0]) * splitFrac
     const sy = prev[1] + (next[1] - prev[1]) * splitFrac
 
-    // Future portion (dim)
-    drawSmoothPath(ctx, screenPts, stroke, width, 0.25)
+    drawSmoothPath(ctx, screenPts, strokeStyle, width, 0.25)
 
-    // Consumed portion (bright, drawn on top)
     const consumedPts: [number, number][] = screenPts.slice(0, splitIdx)
     consumedPts.push([sx, sy])
-    drawSmoothPath(ctx, consumedPts, stroke, width, 1.0)
+    drawSmoothPath(ctx, consumedPts, strokeStyle, width, 1.0)
 
-    // Crossing-based percentage pill at the split point (+5% per cross)
     if (crossPct > 0) {
-      renderPercentagePill(ctx, sx, sy - 14, `${crossPct}%`, stroke, bgRgb)
+      renderPercentagePill(ctx, sx, sy - 14, `${crossPct}%`, dotColor, bgRgb)
     }
 
-    // Split-point dot
     ctx.save()
-    ctx.fillStyle = stroke
+    ctx.fillStyle = dotColor
     ctx.globalAlpha = 0.9
     ctx.beginPath()
     ctx.arc(sx, sy, 3.5, 0, Math.PI * 2)
@@ -187,9 +274,8 @@ function renderPath(
     ctx.restore()
   }
 
-  // Endpoint dots
   ctx.save()
-  ctx.fillStyle = stroke
+  ctx.fillStyle = dotColor
   ctx.globalAlpha = isActive ? 0.5 : (noneConsumed ? 0.4 : 0.8)
   ctx.beginPath()
   ctx.arc(screenPts[0][0], screenPts[0][1], 2.5, 0, Math.PI * 2)
@@ -200,14 +286,13 @@ function renderPath(
   ctx.fill()
   ctx.restore()
 
-  // Price delta label for fully consumed paths
   if (allConsumed) {
     const straightDx = last[0] - screenPts[0][0]
     const straightDy = last[1] - screenPts[0][1]
     if (Math.sqrt(straightDx * straightDx + straightDy * straightDy) >= 20) {
       const delta = pts[pts.length - 1].value - pts[0].value
       const sign = delta >= 0 ? '+' : ''
-      renderPercentagePill(ctx, last[0], last[1] + (delta >= 0 ? -24 : 8), `${sign}${formatValue(delta)}`, stroke, bgRgb)
+      renderPercentagePill(ctx, last[0], last[1] + (delta >= 0 ? -24 : 8), `${sign}${formatValue(delta)}`, dotColor, bgRgb)
     }
   }
 }

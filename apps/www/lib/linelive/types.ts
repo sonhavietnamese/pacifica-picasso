@@ -20,10 +20,21 @@ export interface DrawLinePoint {
   value: number
 }
 
+export interface GradientStop {
+  offset: number
+  color: string
+}
+
+export type DrawLineTexture =
+  | { type: 'solid'; color: string }
+  | { type: 'gradient'; stops: GradientStop[]; angle?: number }
+  | { type: 'image'; src: string; repetition?: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat' }
+
 export interface DrawLine {
   points: DrawLinePoint[]
   stroke?: string
   strokeWidth?: number
+  texture?: DrawLineTexture
   /** Set when loaded from chain or after submit; used to merge subscription updates */
   onChainLineId?: number
 }
@@ -32,6 +43,7 @@ export interface DrawConfig {
   enabled?: boolean
   stroke?: string
   strokeWidth?: number
+  texture?: DrawLineTexture
 }
 
 export interface ReferenceLine {
