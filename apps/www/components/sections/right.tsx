@@ -12,8 +12,13 @@ export default function SectionRight() {
   return (
     <AnimatePresence>
       {authenticated && (
-        <motion.section className="" animate={{ width: 320 }} exit={{ width: 0 }}>
-          <motion.section exit={{ opacity: 0 }} className="flex flex-col  h-full">
+        <motion.section className="" initial={{ width: 0 }} animate={{ width: 320 }} exit={{ width: 0 }}>
+          <motion.section
+            transition={{ delay: 0.2 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col  h-full"
+          >
             <SectionProfile user={user} />
 
             <SectionConfiguration />

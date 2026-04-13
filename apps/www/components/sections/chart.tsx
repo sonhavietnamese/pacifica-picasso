@@ -4,7 +4,7 @@ import { usePacificaPriceStream } from '@/hooks/use-pacifica-price-stream'
 import { DrawLine, Liveline, useDrawLinesStore, type LivelinePoint } from '@/lib/linelive'
 import { roundPriceDirection } from '@/lib/utils'
 import { useTokenStore } from '@/stores/token'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { TextMorph } from 'torph/react'
 import { DotBackground } from '../ui/dot-background'
 import { PriceArrowIndicator } from '../ui/price-arrow-indicator'
@@ -52,6 +52,25 @@ export function SectionChart() {
   usePacificaPriceStream(token.symbol, onPriceUpdate)
 
   const hasData = data.length > 0 && value > 0
+
+  useEffect(() => {
+    if (!hasData) {
+      document.title = `Picasso | ${token.symbol}`
+      return
+    }
+    const arrow = priceDirection === 'up' ? '↑' : '↓'
+    const formatted = value.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+    document.title = `Picasso | ${token.symbol} ${arrow} ${formatted}`
+  }, [hasData, token.symbol, value, priceDirection])
+
+  useEffect(() => {
+    return () => {
+      document.title = 'Picasso'
+    }
+  }, [])
 
   return (
     <section className="rounded-xl relative overflow-hidden bg-[linear-gradient(180deg,#11131E_19%,#56507D_100%)] p-3 w-full h-full">

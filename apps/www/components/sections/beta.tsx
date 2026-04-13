@@ -1,6 +1,14 @@
+import { motion } from 'motion/react'
+
 export default function SectionBeta() {
   return (
-    <section className="p-4 rounded-xl bg-[#171717] mt-2 gap-2 flex flex-col">
+    <motion.section
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ delay: 0.2 }}
+      className="p-4 rounded-xl bg-[#171717] mt-2 gap-2 flex flex-col"
+    >
       <div>
         <div id="title">
           <span className="font-druk text-white text-base leading-none">Beta*</span>
@@ -20,6 +28,6 @@ export default function SectionBeta() {
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   )
 }

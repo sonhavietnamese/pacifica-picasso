@@ -8,14 +8,19 @@ import Feeds from '@/components/sections/feeds'
 import SectionRight from '@/components/sections/right'
 import { SectionSketchbook } from '@/components/sections/sketchbook'
 import { usePrivy } from '@privy-io/react-auth'
+import { AnimatePresence, motion } from 'motion/react'
 
 export default function Page() {
-  const { ready } = usePrivy()
+  const { ready, authenticated } = usePrivy()
 
   if (!ready) return <div className="text-white">Loading...</div>
 
   return (
     <main className="w-screen h-screen p-2 overflow-hidden">
+      <aside className="absolute top-2 right-2 z-10">
+        <ConnectButton />
+      </aside>
+
       <section className="w-full h-full grid grid-cols-[280px_1fr] gap-2 text-white">
         <section className="grid grid-rows-[auto_1fr] gap-2 w-full h-full overflow-hidden">
           <Brand />
@@ -25,9 +30,13 @@ export default function Page() {
               <SectionArtists />
             </div>
 
-            <div className="h-[700px] overflow-hidden">
-              <SectionSketchbook />
-            </div>
+            <AnimatePresence>
+              {authenticated && (
+                <motion.div className="  overflow-hidden" animate={{ height: 700 }} exit={{ height: 0 }}>
+                  <SectionSketchbook />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </section>
 
@@ -36,10 +45,6 @@ export default function Page() {
             <Feeds />
             <section className="w-full h-full">
               <SectionChart />
-
-              <aside className="absolute bottom-2 right-2 z-10">
-                <ConnectButton />
-              </aside>
             </section>
           </section>
 

@@ -23,7 +23,7 @@
   }
 
   button {
-    @apply cursor-pointer;
+    @apply cursor-pointer outline-none;
   }
 
   button:active {
