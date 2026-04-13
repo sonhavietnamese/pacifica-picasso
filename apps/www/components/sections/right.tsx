@@ -1,8 +1,11 @@
+'use client'
+
 import { usePrivy } from '@privy-io/react-auth'
 import { AnimatePresence, motion } from 'motion/react'
 import SectionBeta from './beta'
 import SectionConfiguration from './configuration'
 import SectionProfile from './profile'
+import SectionAccount from './account'
 
 export default function SectionRight() {
   const { authenticated, user } = usePrivy()
@@ -23,11 +26,7 @@ export default function SectionRight() {
 
             <SectionConfiguration />
 
-            <section className="flex min-h-0 flex-1 flex-col">
-              {/* <figure className="relative min-h-0 flex-1 w-full">
-                <Image src="/panel.svg" alt="panel" fill className="object-contain object-center" sizes="100%" />
-              </figure> */}
-            </section>
+            <SectionAccount user={user} />
 
             <SectionBeta />
           </motion.section>

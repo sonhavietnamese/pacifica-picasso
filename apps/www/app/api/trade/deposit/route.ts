@@ -3,7 +3,7 @@ import privy, { authorizationContext } from '@/lib/privy'
 import { connection } from '@/lib/solana'
 import { PublicKey } from '@solana/web3.js'
 
-const DEFAULT_DEPOSIT_AMOUNT = 15
+const DEFAULT_DEPOSIT_AMOUNT = 20
 const SOLANA_DEVNET_CAIP2 = 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'
 
 export async function POST(request: Request) {

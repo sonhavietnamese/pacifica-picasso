@@ -1,3 +1,7 @@
+'use client'
+
+import { usePacificaAccount } from '@/hooks/use-pacifica-account'
+import { usePrivy } from '@privy-io/react-auth'
 import NumberFlow from '@number-flow/react'
 import { DropdownMenu } from 'radix-ui'
 import { useMemo, useState } from 'react'
@@ -7,10 +11,15 @@ export const EXAMPLE_FUND = 120
 
 export default function SectionConfiguration() {
   const [risk, setRisk] = useState(5)
+  const { user } = usePrivy()
+
+  const { data: account } = usePacificaAccount(user?.wallet?.address)
 
   const riskAmount = useMemo(() => {
-    return EXAMPLE_FUND * (risk / 100)
-  }, [risk])
+    if (!account) return 0
+
+    return Number(account.balance) * (risk / 100)
+  }, [account, risk])
 
   return (
     <section className="p-4 rounded-xl bg-[#171717] mt-2 gap-2 flex flex-col">

@@ -1,3 +1,5 @@
+'use client'
+
 import { formatAddress } from '@/lib/utils'
 import { usePrivy, User } from '@privy-io/react-auth'
 import Image from 'next/image'
