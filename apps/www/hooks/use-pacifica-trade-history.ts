@@ -1,10 +1,12 @@
 'use client'
 
 import { PACIFICA_API_ENDPOINTS } from '@/lib/constants'
-import type { OrderSide } from 'pacifica.js'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 
-/** Row from GET /api/v1/trades/history — Pacifica REST. */
+/**
+ * One fill from GET /api/v1/trades/history.
+ * @see https://pacifica.gitbook.io/docs/api-documentation/api/rest-api/account/get-trade-history
+ */
 export type PacificaTradeHistoryRow = {
   history_id: number
   order_id: number
@@ -21,25 +23,36 @@ export type PacificaTradeHistoryRow = {
   cause: string
 }
 
-type PacificaTradesHistoryResponse = {
+export type PacificaTradeHistoryQueryParams = {
+  symbol?: string
+  start_time?: number
+  end_time?: number
+  /** Max rows per request; API default 100. */
+  limit?: number
+}
+
+type PacificaTradeHistoryPageResponse = {
   success: boolean
   data: PacificaTradeHistoryRow[]
+  next_cursor?: string | null
+  has_more?: boolean
   error: string | null
   code: string | null
-  last_order_id?: number
 }
 
-export function tradeHistorySideToOrderSide(side: string): OrderSide {
-  if (side === 'bid' || side === 'ask') return side
-  if (side.includes('long')) return 'bid'
-  if (side.includes('short')) return 'ask'
-  return 'bid'
-}
+async function fetchTradeHistoryPage(
+  account: string,
+  cursor: string | undefined,
+  params: PacificaTradeHistoryQueryParams | undefined
+): Promise<{ data: PacificaTradeHistoryRow[]; next_cursor: string | null; has_more: boolean }> {
+  const search = new URLSearchParams({ account })
+  if (params?.symbol) search.set('symbol', params.symbol)
+  if (params?.start_time != null) search.set('start_time', String(params.start_time))
+  if (params?.end_time != null) search.set('end_time', String(params.end_time))
+  if (params?.limit != null) search.set('limit', String(params.limit))
+  if (cursor) search.set('cursor', cursor)
 
-async function fetchTradesHistory(account: string): Promise<PacificaTradeHistoryRow[]> {
-  const response = await fetch(
-    `${PACIFICA_API_ENDPOINTS.GET_TRADES_HISTORY}?account=${encodeURIComponent(account)}`
-  )
+  const response = await fetch(`${PACIFICA_API_ENDPOINTS.GET_TRADES_HISTORY}?${search.toString()}`)
   const raw = await response.text()
   let body: unknown
   try {
@@ -59,20 +72,30 @@ async function fetchTradesHistory(account: string): Promise<PacificaTradeHistory
     throw new Error(msg)
   }
 
-  const parsed = body as Partial<PacificaTradesHistoryResponse>
+  const parsed = body as Partial<PacificaTradeHistoryPageResponse>
   if (!parsed.success || !Array.isArray(parsed.data)) {
     const apiError =
       typeof parsed.error === 'string' && parsed.error.length > 0 ? parsed.error : 'Unexpected response'
     throw new Error(apiError)
   }
 
-  return parsed.data
+  return {
+    data: parsed.data,
+    next_cursor: parsed.next_cursor ?? null,
+    has_more: parsed.has_more ?? false,
+  }
 }
 
-export function usePacificaTradeHistory(account: string | null | undefined) {
-  return useQuery({
-    queryKey: ['pacifica', 'trades-history', account],
-    queryFn: () => fetchTradesHistory(account!),
+export function usePacificaTradeHistory(
+  account: string | null | undefined,
+  params?: PacificaTradeHistoryQueryParams
+) {
+  return useInfiniteQuery({
+    queryKey: ['pacifica', 'trades-history', account, params],
+    queryFn: ({ pageParam }) => fetchTradeHistoryPage(account!, pageParam as string | undefined, params),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.has_more && lastPage.next_cursor ? lastPage.next_cursor : undefined,
     enabled: Boolean(account),
     staleTime: 15_000,
   })

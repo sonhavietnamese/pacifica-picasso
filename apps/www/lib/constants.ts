@@ -7,7 +7,9 @@ export const PACIFICA_API_ENDPOINTS = {
   CREATE_STOP_ORDER: `${PACIFICA_API_BASE}/orders/stop/create`,
   GET_OPEN_ORDERS: `${PACIFICA_API_BASE}/orders`,
   GET_ACCOUNT: `${PACIFICA_API_BASE}/account`,
-  /** Trade / fill history used for the Live sketchbook list (see GET with `account` query). */
+  /** Open positions — GET with `account` query. @see https://pacifica.gitbook.io/docs/api-documentation/api/rest-api/account/get-positions */
+  GET_POSITIONS: `${PACIFICA_API_BASE}/positions`,
+  /** Trade / fill history — GET with `account` and optional filters. @see https://pacifica.gitbook.io/docs/api-documentation/api/rest-api/account/get-trade-history */
   GET_TRADES_HISTORY: `${PACIFICA_API_BASE}/trades/history`,
   CANCEL_ORDER: `${PACIFICA_API_BASE}/orders/cancel`,
   CANCEL_STOP_ORDER: `${PACIFICA_API_BASE}/orders/stop/cancel`,

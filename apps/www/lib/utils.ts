@@ -51,3 +51,11 @@ export function formatPrice(number: number) {
     maximumFractionDigits: 2,
   })
 }
+
+export function formatTradePnl(pnl: string) {
+  const n = Number.parseFloat(pnl)
+  if (!Number.isFinite(n)) return '—'
+  if (n === 0) return '$0'
+  const sign = n > 0 ? '+' : '-'
+  return `${sign}$${formatPrice(Math.abs(n))}`
+}
