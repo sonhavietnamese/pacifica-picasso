@@ -1,6 +1,7 @@
 'use client'
 
 import { cn, formatPrice } from '@/lib/utils'
+import { usePrivy } from '@privy-io/react-auth'
 import type { OrderSide } from 'pacifica.js'
 
 type State = 'pending' | 'active'
@@ -42,6 +43,7 @@ export function CardSketch({
   stopLoss,
   pnlLabel,
 }: CardSketchProps) {
+  const { user } = usePrivy()
   const title = symbol ?? '—'
   const entryDisplay = state === 'pending' ? 'Waiting' : formatUsdRough(entryPrice)
   const tpDisplay = takeProfit != null && takeProfit !== '' ? formatUsdRough(takeProfit) : '—'
@@ -49,6 +51,24 @@ export function CardSketch({
   const pnlDisplay = pnlLabel ?? (state === 'pending' ? '$0' : '—')
   const pnlNegative = pnlDisplay.startsWith('-')
   const pnlNeutral = pnlDisplay === '—' || pnlDisplay === '$0'
+
+  const closePosition = async () => {
+    if (!user) return
+    if (!user.wallet || !user.wallet.connectorType || user.wallet.connectorType !== 'embedded') return
+
+    const response = await fetch('/api/trade/orders/create_market', {
+      method: 'POST',
+      body: JSON.stringify({
+        wallet_id: user.wallet.id,
+        symbol: symbol,
+        side: side === 'bid' ? 'ask' : 'bid',
+        amount: amount,
+      }),
+    })
+
+    const data = await response.json()
+    console.log(data)
+  }
 
   return (
     <li
@@ -59,7 +79,10 @@ export function CardSketch({
     >
       {state != 'pending' && (
         <aside className="absolute top-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          <button className="bg-[#1B1B1B] rounded-lg p-1 px-1.5 border border-white/5 opacity-80 hover:opacity-100 transition-opacity duration-150">
+          <button
+            onClick={closePosition}
+            className="bg-[#1B1B1B] rounded-lg p-1 px-1.5 border border-white/5 opacity-80 hover:opacity-100 transition-opacity duration-150"
+          >
             <span className="leading-none text-white/80 text-sm font-medium ">Close</span>
           </button>
         </aside>

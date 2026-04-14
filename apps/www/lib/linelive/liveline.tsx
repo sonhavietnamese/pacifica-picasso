@@ -80,7 +80,7 @@ export function Liveline({
   const [modeIndicatorStyle, setModeIndicatorStyle] = useState<{ left: number; width: number } | null>(null)
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set())
   const [activeDrawStroke, setActiveDrawStroke] = useState(draw?.stroke ?? color)
-  const [activeDrawStrokeWidth, setActiveDrawStrokeWidth] = useState(4)
+  const [activeDrawStrokeWidth] = useState(8)
   const [activeDrawTexture, setActiveDrawTexture] = useState<DrawLineTexture | undefined>(draw?.texture)
   const lastSeriesPropRef = useRef(seriesProp)
   // eslint-disable-next-line react-hooks/refs
@@ -119,24 +119,52 @@ export function Liveline({
     return [...new Set(base)]
   }, [color])
 
-  const gradientPresets = useMemo<{ texture: DrawLineTexture; css: string }[]>(() => [
-    {
-      texture: { type: 'gradient', stops: [{ offset: 0, color: '#FF6B6B' }, { offset: 1, color: '#FFD93D' }] },
-      css: 'linear-gradient(135deg, #FF6B6B, #FFD93D)',
-    },
-    {
-      texture: { type: 'gradient', stops: [{ offset: 0, color: '#6366F1' }, { offset: 1, color: '#EC4899' }] },
-      css: 'linear-gradient(135deg, #6366F1, #EC4899)',
-    },
-    {
-      texture: { type: 'gradient', stops: [{ offset: 0, color: '#06B6D4' }, { offset: 1, color: '#10B981' }] },
-      css: 'linear-gradient(135deg, #06B6D4, #10B981)',
-    },
-    {
-      texture: { type: 'gradient', stops: [{ offset: 0, color: '#F59E0B' }, { offset: 0.5, color: '#EF4444' }, { offset: 1, color: '#8B5CF6' }] },
-      css: 'linear-gradient(135deg, #F59E0B, #EF4444, #8B5CF6)',
-    },
-  ], [])
+  const gradientPresets = useMemo<{ texture: DrawLineTexture; css: string }[]>(
+    () => [
+      {
+        texture: {
+          type: 'gradient',
+          stops: [
+            { offset: 0, color: '#FF6B6B' },
+            { offset: 1, color: '#FFD93D' },
+          ],
+        },
+        css: 'linear-gradient(135deg, #FF6B6B, #FFD93D)',
+      },
+      {
+        texture: {
+          type: 'gradient',
+          stops: [
+            { offset: 0, color: '#6366F1' },
+            { offset: 1, color: '#EC4899' },
+          ],
+        },
+        css: 'linear-gradient(135deg, #6366F1, #EC4899)',
+      },
+      {
+        texture: {
+          type: 'gradient',
+          stops: [
+            { offset: 0, color: '#06B6D4' },
+            { offset: 1, color: '#10B981' },
+          ],
+        },
+        css: 'linear-gradient(135deg, #06B6D4, #10B981)',
+      },
+      {
+        texture: {
+          type: 'gradient',
+          stops: [
+            { offset: 0, color: '#F59E0B' },
+            { offset: 0.5, color: '#EF4444' },
+            { offset: 1, color: '#8B5CF6' },
+          ],
+        },
+        css: 'linear-gradient(135deg, #F59E0B, #EF4444, #8B5CF6)',
+      },
+    ],
+    []
+  )
 
   // Resolve momentum prop: boolean enables auto-detect, string overrides
   const showMomentum = momentum !== false
@@ -249,7 +277,9 @@ export function Liveline({
     emptyText,
     priceLine,
     futureSpace,
-    draw: draw ? { ...draw, stroke: activeDrawStroke, strokeWidth: activeDrawStrokeWidth, texture: activeDrawTexture } : undefined,
+    draw: draw
+      ? { ...draw, stroke: activeDrawStroke, strokeWidth: activeDrawStrokeWidth, texture: activeDrawTexture }
+      : undefined,
     drawLines,
     onDrawEnd,
     onCrossing: onCrossingProp,

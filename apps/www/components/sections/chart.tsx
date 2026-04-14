@@ -125,7 +125,7 @@ export function SectionChart() {
           momentum
           scrub={false}
           window={120}
-          draw={{ enabled: true, stroke: '#14F195', strokeWidth: 2 }}
+          draw={{ enabled: true, stroke: '#14F195', strokeWidth: 20 }}
           drawLines={drawnLines}
           onDrawEnd={handleDrawEnd}
           onCrossing={setCrossCount}

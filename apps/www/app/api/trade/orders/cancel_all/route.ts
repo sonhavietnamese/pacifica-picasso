@@ -1,30 +1,26 @@
 import privy, { authorizationContext } from '@/lib/privy'
-import { v4 as uuidv4 } from 'uuid'
 import bs58 from 'bs58'
 import { prepareMessage } from '@/lib/utils'
 import { PACIFICA_API_ENDPOINTS } from '@/lib/constants'
 
-/** Same as `garden/python-sdk/common/constants.py` testnet base. */
-
 export async function POST(request: Request) {
   const body = (await request.json()) as {
     wallet_id?: string
+    all_symbols?: boolean
+    exclude_reduce_only?: boolean
     symbol?: string
-    take_profit_stop_price?: string
-    take_profit_limit_price?: string
-    stop_loss_stop_price?: string
-    stop_loss_limit_price?: string
-    price?: string
-    amount?: string
-    side?: 'bid' | 'ask'
-    tif?: string
-    reduce_only?: boolean
-    client_order_id?: string
   }
 
   const { wallet_id } = body
   if (!wallet_id) {
     return Response.json({ error: 'wallet_id is required' }, { status: 400 })
+  }
+
+  const all_symbols = body.all_symbols ?? true
+  const exclude_reduce_only = body.exclude_reduce_only ?? false
+
+  if (!all_symbols && !body.symbol) {
+    return Response.json({ error: 'symbol is required when all_symbols is false' }, { status: 400 })
   }
 
   const wallet = await privy.wallets().get(wallet_id)
@@ -37,33 +33,13 @@ export async function POST(request: Request) {
   const signatureHeader = {
     timestamp,
     expiry_window: 5_000,
-    type: 'create_order',
+    type: 'cancel_all_orders',
   }
 
-  // "symbol": "BTC",
-  // "price": str(80_000),
-  // "reduce_only": False,
-  // "amount": "0.01",
-  // "side": "bid",
-  // "tif": "GTC",
-  // "client_order_id": str(uuid.uuid4()),
-
   const signaturePayload = {
-    symbol: body.symbol ?? 'BTC',
-    price: body.price ?? '80000',
-    reduce_only: body.reduce_only ?? false,
-    amount: body.amount ?? '0.001',
-    side: body.side ?? 'bid',
-    tif: body.tif ?? 'GTC',
-    client_order_id: body.client_order_id ?? uuidv4(),
-    take_profit: {
-      stop_price: body.take_profit_stop_price ?? '80100',
-      limit_price: body.take_profit_limit_price ?? '80100',
-    },
-    stop_loss: {
-      stop_price: body.stop_loss_stop_price ?? '79900',
-      limit_price: body.stop_loss_limit_price ?? '79900',
-    },
+    all_symbols,
+    exclude_reduce_only,
+    ...(!all_symbols ? { symbol: body.symbol as string } : {}),
   }
 
   const message = prepareMessage(signatureHeader, signaturePayload)
@@ -84,7 +60,7 @@ export async function POST(request: Request) {
     ...signaturePayload,
   }
 
-  const response = await fetch(PACIFICA_API_ENDPOINTS.CREATE_ORDER, {
+  const response = await fetch(PACIFICA_API_ENDPOINTS.CANCEL_ALL_ORDERS, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(rq),

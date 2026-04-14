@@ -1,11 +1,15 @@
 'use client'
 
 import { CardSketch } from '@/components/ui/card-sketch'
+import { usePacificaOpenOrders } from '@/hooks/use-pacifica-open-orders'
 import { usePacificaSketchbook } from '@/hooks/use-pacifica-sketchbook'
+import { tradeHistorySideToOrderSide, usePacificaTradeHistory } from '@/hooks/use-pacifica-trade-history'
+import { useDrawLinesStore } from '@/lib/linelive'
 import { cn, formatPrice } from '@/lib/utils'
 import { useSketchbook } from '@/stores/sketchbook'
 import { usePrivy } from '@privy-io/react-auth'
-import { useMemo } from 'react'
+import { LineCard } from '../line-card'
+import { SectionOrders } from './orders'
 
 function formatTradePnl(pnl: string): string {
   const n = Number.parseFloat(pnl)
@@ -21,37 +25,79 @@ export function SectionSketchbook() {
   const { user } = usePrivy()
   const address = user?.wallet?.address
 
+  const drawLines = useDrawLinesStore((state) => state.lines)
+
   const {
-    positions,
+    orders,
+    isLoading: isOrdersLoading,
+    error: ordersError,
+    refetch: refetchOrders,
+  } = usePacificaOpenOrders(address)
 
-    recentTrades,
-    error,
-    connectionStatus,
-  } = usePacificaSketchbook(address)
+  const { recentTrades, error, connectionStatus } = usePacificaSketchbook(address)
 
-  console.log(positions, recentTrades)
+  const {
+    data: tradeHistoryRows = [],
+    isPending: isTradeHistoryPending,
+    error: tradeHistoryError,
+  } = usePacificaTradeHistory(address)
 
-  const latestPnlBySymbol = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const t of recentTrades) {
-      if (!m.has(t.symbol)) {
-        m.set(t.symbol, formatTradePnl(t.pnl))
-      }
-    }
-    return m
-  }, [recentTrades])
+  const sketchbookError = error ?? tradeHistoryError?.message ?? null
 
-  const createOrder = async () => {
+  const createStopOrder = async () => {
     if (!user) return
     if (!user.wallet || !user.wallet.connectorType || user.wallet.connectorType !== 'embedded') return
 
-    const response = await fetch('/api/trade/orders/create', {
+    const response = await fetch('/api/trade/orders/stop/create', {
       method: 'POST',
-      body: JSON.stringify({ wallet_id: user.wallet.id }),
+      body: JSON.stringify({
+        wallet_id: user.wallet.id,
+        symbol: 'BTC',
+        side: 'bid',
+        reduce_only: false,
+
+        stop_price: '80100',
+        limit_price: '80100',
+      }),
     })
 
     const data = await response.json()
     console.log(data)
+    void refetchOrders()
+  }
+
+  const cancelStopOrder = async () => {
+    if (!user) return
+    if (!user.wallet || !user.wallet.connectorType || user.wallet.connectorType !== 'embedded') return
+
+    const response = await fetch('/api/trade/orders/stop/cancel', {
+      method: 'POST',
+      body: JSON.stringify({
+        wallet_id: user.wallet.id,
+        order_id: orders[0].order_id,
+      }),
+    })
+
+    const data = await response.json()
+    console.log(data)
+    void refetchOrders()
+  }
+
+  const cancelAllOrders = async () => {
+    if (!user) return
+    if (!user.wallet || !user.wallet.connectorType || user.wallet.connectorType !== 'embedded') return
+
+    const response = await fetch('/api/trade/orders/cancel_all', {
+      method: 'POST',
+      body: JSON.stringify({
+        wallet_id: user.wallet.id,
+        all_symbols: true,
+      }),
+    })
+
+    const data = await response.json()
+    console.log(data)
+    void refetchOrders()
   }
 
   return (
@@ -77,30 +123,43 @@ export function SectionSketchbook() {
           >
             History
           </button>
+          <button
+            onClick={() => setTab('orders')}
+            className={cn(
+              'text-white/70 px-2.5 p-2 rounded-lg bg-[#262626] ',
+              tab === 'orders' && 'bg-[#171717] text-white'
+            )}
+          >
+            Orders
+          </button>
         </div>
       </div>
       <div className="w-full h-full rounded-xl overflow-auto hide-scrollbar">
-        {error ? <p className="mb-2 text-sm text-red-400/90">{error}</p> : null}
-        {address && connectionStatus === 'connecting' && !error ? (
-          <p className="mb-2 text-xs text-white/40">Syncing positions…</p>
+        {sketchbookError ? <p className="mb-2 text-sm text-red-400/90">{sketchbookError}</p> : null}
+        {address && (isTradeHistoryPending || connectionStatus === 'connecting') && !sketchbookError ? (
+          <p className="mb-2 text-xs text-white/40">Syncing sketchbook…</p>
         ) : null}
 
         {tab === 'live' ? (
           <ul className="w-full h-full rounded-xl space-y-2">
-            {!address || positions.length === 0 ? <CardSketch state="pending" /> : null}
-            {address && positions.length > 0
-              ? positions.map((p) => (
+            {!address || tradeHistoryRows.length === 0 ? <CardSketch state="pending" /> : null}
+            {address && tradeHistoryRows.length > 0
+              ? tradeHistoryRows.map((p) => (
                   <CardSketch
-                    key={`${p.symbol}-${p.side}`}
+                    key={p.history_id}
                     state="active"
                     symbol={p.symbol}
-                    side={p.side}
+                    side={tradeHistorySideToOrderSide(p.side)}
                     entryPrice={p.entry_price}
                     amount={p.amount}
-                    pnlLabel={latestPnlBySymbol.get(p.symbol) ?? null}
+                    pnlLabel={formatTradePnl(p.pnl)}
                   />
                 ))
               : null}
+
+            {drawLines.map((line) => (
+              <LineCard key={line.points[0].time} line={line} />
+            ))}
           </ul>
         ) : (
           <ul className="w-full rounded-xl space-y-1.5 font-sans text-xs">
@@ -136,10 +195,19 @@ export function SectionSketchbook() {
             )}
           </ul>
         )}
+
+        {tab === 'orders' ? <SectionOrders orders={orders} isLoading={isOrdersLoading} error={ordersError} /> : null}
       </div>
 
-      <button className="bg-yellow-500 text-white px-4 py-2 rounded-md" onClick={createOrder}>
+      <button className="bg-yellow-500 text-white px-4 py-2 rounded-md" onClick={createStopOrder}>
         Create Order
+      </button>
+
+      <button className="bg-yellow-500 text-white px-4 py-2 rounded-md" onClick={cancelAllOrders}>
+        Cancel Order
+      </button>
+      <button className="bg-yellow-500 text-white px-4 py-2 rounded-md" onClick={cancelStopOrder}>
+        Cancel Stop Order
       </button>
     </section>
   )

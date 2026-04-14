@@ -17,6 +17,8 @@ type Pool = {
   accountPositionsByAccount: Map<string, number>
   /** Refcount per account for `account_trades`. */
   accountTradesByAccount: Map<string, number>
+  /** Refcount per account for `account_order_updates`. */
+  accountOrderUpdatesByAccount: Map<string, number>
   /** How many hooks consume the `prices` channel. */
   priceStreamRefCount: number
 }
@@ -33,6 +35,7 @@ function getPool(wsUrl: string): Pool {
       accountInfoByAccount: new Map(),
       accountPositionsByAccount: new Map(),
       accountTradesByAccount: new Map(),
+      accountOrderUpdatesByAccount: new Map(),
       priceStreamRefCount: 0,
     }
     pools.set(wsUrl, pool)
@@ -131,6 +134,30 @@ export function unsubscribeAccountTradesChannel(wsUrl: string, account: string):
     pool.client.ws.unsubscribe({ source: 'account_trades', account })
   } else {
     pool.accountTradesByAccount.set(account, next)
+  }
+}
+
+export function subscribeAccountOrderUpdatesChannel(wsUrl: string, account: string): void {
+  const pool = pools.get(wsUrl)
+  if (!pool) return
+  const next = (pool.accountOrderUpdatesByAccount.get(account) ?? 0) + 1
+  pool.accountOrderUpdatesByAccount.set(account, next)
+  if (next === 1) {
+    pool.client.ws.subscribeAccountOrderUpdates(account)
+  }
+}
+
+export function unsubscribeAccountOrderUpdatesChannel(wsUrl: string, account: string): void {
+  const pool = pools.get(wsUrl)
+  if (!pool) return
+  const prev = pool.accountOrderUpdatesByAccount.get(account) ?? 0
+  if (prev <= 0) return
+  const next = prev - 1
+  if (next <= 0) {
+    pool.accountOrderUpdatesByAccount.delete(account)
+    pool.client.ws.unsubscribe({ source: 'account_order_updates', account })
+  } else {
+    pool.accountOrderUpdatesByAccount.set(account, next)
   }
 }
 

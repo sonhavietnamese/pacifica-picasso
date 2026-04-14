@@ -29,7 +29,7 @@ function resolveStrokeStyle(
   texture: DrawLineTexture | undefined,
   fallbackColor: string,
   pts: [number, number][],
-  strokeWidth: number,
+  strokeWidth: number
 ): string | CanvasGradient | CanvasPattern {
   if (!texture) return fallbackColor
 
@@ -39,7 +39,10 @@ function resolveStrokeStyle(
 
     case 'gradient': {
       if (pts.length < 2 || texture.stops.length < 2) return fallbackColor
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity
       for (const [x, y] of pts) {
         if (x < minX) minX = x
         if (y < minY) minY = y
@@ -82,17 +85,22 @@ function resolveStrokeStyle(
 function getRepresentativeColor(texture: DrawLineTexture | undefined, fallback: string): string {
   if (!texture) return fallback
   switch (texture.type) {
-    case 'solid': return texture.color
-    case 'gradient': return texture.stops[0]?.color ?? fallback
-    case 'image': return fallback
+    case 'solid':
+      return texture.color
+    case 'gradient':
+      return texture.stops[0]?.color ?? fallback
+    case 'image':
+      return fallback
   }
 }
 
 // ── Cross particles (spawned when price crosses a drawn line) ────────────
 
 export interface CrossParticle {
-  x: number; y: number
-  vx: number; vy: number
+  x: number
+  y: number
+  vx: number
+  vy: number
   life: number
   size: number
   color: string
@@ -103,7 +111,7 @@ const CROSS_PARTICLE_LIFETIME = 1.0
 export function updateAndDrawCrossParticles(
   ctx: CanvasRenderingContext2D,
   particles: CrossParticle[],
-  dt: number,
+  dt: number
 ): void {
   if (particles.length === 0) return
   const dtSec = dt / 1000
@@ -142,11 +150,23 @@ export function drawUserLines(
   formatValue: (v: number) => string,
   bgRgb: [number, number, number],
   now: number,
-  crossCounts: number[],
+  crossCounts: number[]
 ): void {
   for (let i = 0; i < lines.length; i++) {
     const crossPct = Math.min(100, (crossCounts[i] ?? 0) * 5)
-    renderPath(ctx, layout, lines[i], defaultStroke, defaultWidth, defaultTexture, formatValue, bgRgb, false, now, crossPct)
+    renderPath(
+      ctx,
+      layout,
+      lines[i],
+      defaultStroke,
+      defaultWidth,
+      defaultTexture,
+      formatValue,
+      bgRgb,
+      false,
+      now,
+      crossPct
+    )
   }
   if (activeLine) {
     renderPath(ctx, layout, activeLine, defaultStroke, defaultWidth, defaultTexture, formatValue, bgRgb, true, now, 0)
@@ -158,7 +178,7 @@ function drawSmoothPath(
   pts: [number, number][],
   stroke: string | CanvasGradient | CanvasPattern,
   width: number,
-  alpha: number,
+  alpha: number
 ) {
   if (pts.length < 2) return
   ctx.save()
@@ -185,10 +205,7 @@ function drawSmoothPath(
   ctx.restore()
 }
 
-function roundedRect(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, w: number, h: number, r: number,
-) {
+function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath()
   ctx.moveTo(x + r, y)
   ctx.lineTo(x + w - r, y)
@@ -213,7 +230,7 @@ function renderPath(
   bgRgb: [number, number, number],
   isActive: boolean,
   now: number,
-  crossPct: number,
+  crossPct: number
 ) {
   const pts = line.points
   if (pts.length < 2) return
@@ -221,7 +238,7 @@ function renderPath(
   const solidColor = line.stroke ?? defaultStroke
   const texture = line.texture ?? defaultTexture
   const width = line.strokeWidth ?? defaultWidth
-  const screenPts: [number, number][] = pts.map(p => [layout.toX(p.time), layout.toY(p.value)])
+  const screenPts: [number, number][] = pts.map((p) => [layout.toX(p.time), layout.toY(p.value)])
 
   const strokeStyle = resolveStrokeStyle(ctx, texture, solidColor, screenPts, width)
   const dotColor = getRepresentativeColor(texture, solidColor)
@@ -276,7 +293,7 @@ function renderPath(
 
   ctx.save()
   ctx.fillStyle = dotColor
-  ctx.globalAlpha = isActive ? 0.5 : (noneConsumed ? 0.4 : 0.8)
+  ctx.globalAlpha = isActive ? 0.5 : noneConsumed ? 0.4 : 0.8
   ctx.beginPath()
   ctx.arc(screenPts[0][0], screenPts[0][1], 2.5, 0, Math.PI * 2)
   ctx.fill()
@@ -292,17 +309,18 @@ function renderPath(
     if (Math.sqrt(straightDx * straightDx + straightDy * straightDy) >= 20) {
       const delta = pts[pts.length - 1].value - pts[0].value
       const sign = delta >= 0 ? '+' : ''
-      renderPercentagePill(ctx, last[0], last[1] + (delta >= 0 ? -24 : 8), `${sign}${formatValue(delta)}`, dotColor, bgRgb)
+      // renderPercentagePill(ctx, last[0], last[1] + (delta >= 0 ? -24 : 8), `${sign}${formatValue(delta)}`, dotColor, bgRgb)
     }
   }
 }
 
 function renderPercentagePill(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number,
+  x: number,
+  y: number,
   text: string,
   stroke: string,
-  bgRgb: [number, number, number],
+  bgRgb: [number, number, number]
 ) {
   ctx.save()
   ctx.font = '600 9px "SF Mono", Menlo, monospace'

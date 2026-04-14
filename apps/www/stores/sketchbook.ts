@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-type Tab = 'live' | 'history'
+type Tab = 'live' | 'history' | 'orders'
 
 interface SketchbookStore {
   tab: Tab

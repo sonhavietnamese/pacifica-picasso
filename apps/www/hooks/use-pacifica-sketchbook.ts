@@ -5,35 +5,40 @@ import {
   acquirePacificaClient,
   releasePacificaClient,
   runWhenPacificaSocketOpen,
-  subscribeAccountPositionsChannel,
+  subscribeAccountOrderUpdatesChannel,
   subscribeAccountTradesChannel,
-  unsubscribeAccountPositionsChannel,
+  unsubscribeAccountOrderUpdatesChannel,
   unsubscribeAccountTradesChannel,
 } from '@/lib/pacifica-ws-pool'
-import { type Position, type Trade } from 'pacifica.js'
+import { type ExtractEventData, type Trade } from 'pacifica.js'
 import { useEffect, useState } from 'react'
 
 const MAX_TRADES = 80
+const MAX_ORDER_UPDATES = 80
+
+/** One row from `account_order_updates` after SDK normalization (`order` + `update_type`). */
+export type PacificaOrderUpdateEntry = ExtractEventData<'account_order_updates'>[number]
 
 export type PacificaSketchbookState = {
-  /** Open positions from REST + `account_positions` stream. */
-  positions: Position[]
   /** Recent fills from `account_trades` (newest first, capped). */
   recentTrades: Trade[]
+  /** Lifecycle updates from `account_order_updates` (newest first, capped). */
+  recentOrderUpdates: PacificaOrderUpdateEntry[]
   isLoading: boolean
   error: string | null
   connectionStatus: 'idle' | 'connecting' | 'open' | 'closed'
 }
 
 /**
- * Loads open positions via REST, then keeps them live via `account_positions` and appends fills from `account_trades`.
+ * Appends fills from `account_trades` and order lifecycle from `account_order_updates`.
+ * Open positions for the Live tab are loaded via REST (`usePacificaTradeHistory`).
  *
- * @see https://pacifica.gitbook.io/docs/api-documentation/api/websocket/subscriptions/account-positions
  * @see https://pacifica.gitbook.io/docs/api-documentation/api/websocket/subscriptions/account-trades
+ * @see https://pacifica.gitbook.io/docs/api-documentation/api/websocket/subscriptions/account-order-updates
  */
 export function usePacificaSketchbook(account: string | null | undefined): PacificaSketchbookState {
-  const [positions, setPositions] = useState<Position[]>([])
   const [recentTrades, setRecentTrades] = useState<Trade[]>([])
+  const [recentOrderUpdates, setRecentOrderUpdates] = useState<PacificaOrderUpdateEntry[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<PacificaSketchbookState['connectionStatus']>('idle')
@@ -43,8 +48,8 @@ export function usePacificaSketchbook(account: string | null | undefined): Pacif
       return
     }
 
-    setPositions([])
     setRecentTrades([])
+    setRecentOrderUpdates([])
 
     const wsUrl = PACIFICA_WS_URL
     const client = acquirePacificaClient(wsUrl)
@@ -54,44 +59,14 @@ export function usePacificaSketchbook(account: string | null | undefined): Pacif
     setError(null)
     setConnectionStatus('connecting')
 
-    const loadPositions = async () => {
-      try {
-        const rows = await client.api.getPositions(account)
-        if (!cancelled) {
-          setPositions(rows)
-          setIsLoading(false)
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Failed to load positions')
-          setIsLoading(false)
-        }
-      }
-    }
-
-    void loadPositions()
-
-    const onPositions = (rows: Position[]) => {
-      if (cancelled) return
-      setPositions(rows)
-      setIsLoading(false)
-      setError(null)
-    }
-
     const onTrades = (batch: Trade[]) => {
       if (cancelled || batch.length === 0) return
-      // setRecentTrades((prev) => {
-      //   const merged = [...batch, ...prev]
-      //   const seen = new Set<number>()
-      //   const deduped: Trade[] = []
-      //   for (const t of merged) {
-      //     if (seen.has(t.history_id)) continue
-      //     seen.add(t.history_id)
-      //     deduped.push(t)
-      //   }
-      //   return deduped.slice(0, MAX_TRADES)
-      // })
       setRecentTrades((prev) => [...batch, ...prev].slice(0, MAX_TRADES))
+    }
+
+    const onOrderUpdates = (batch: ExtractEventData<'account_order_updates'>) => {
+      if (cancelled || batch.length === 0) return
+      setRecentOrderUpdates((prev) => [...batch, ...prev].slice(0, MAX_ORDER_UPDATES))
     }
 
     const onWsError = (payload: unknown) => {
@@ -108,33 +83,36 @@ export function usePacificaSketchbook(account: string | null | undefined): Pacif
     const onError = () => {
       if (cancelled) return
       setError('Connection error')
+      setIsLoading(false)
     }
 
     const onClose = () => {
       if (cancelled) return
       setConnectionStatus('closed')
+      setIsLoading(false)
     }
 
-    client.ws.on('account_positions', onPositions)
     client.ws.on('account_trades', onTrades)
+    client.ws.on('account_order_updates', onOrderUpdates)
     client.ws.on('ws_error', onWsError)
     client.ws.on('error', onError)
     client.ws.on('close', onClose)
 
     const removeOpenListener = runWhenPacificaSocketOpen(client, () => {
       if (cancelled) return
-      subscribeAccountPositionsChannel(wsUrl, account)
       subscribeAccountTradesChannel(wsUrl, account)
+      subscribeAccountOrderUpdatesChannel(wsUrl, account)
       setConnectionStatus('open')
+      setIsLoading(false)
     })
 
     return () => {
       cancelled = true
       removeOpenListener?.()
-      unsubscribeAccountPositionsChannel(wsUrl, account)
       unsubscribeAccountTradesChannel(wsUrl, account)
-      client.ws.off('account_positions', onPositions)
+      unsubscribeAccountOrderUpdatesChannel(wsUrl, account)
       client.ws.off('account_trades', onTrades)
+      client.ws.off('account_order_updates', onOrderUpdates)
       client.ws.off('ws_error', onWsError)
       client.ws.off('error', onError)
       client.ws.off('close', onClose)
@@ -144,8 +122,8 @@ export function usePacificaSketchbook(account: string | null | undefined): Pacif
 
   const active = Boolean(account)
   return {
-    positions: active ? positions : [],
     recentTrades: active ? recentTrades : [],
+    recentOrderUpdates: active ? recentOrderUpdates : [],
     isLoading: active && isLoading,
     error: active ? error : null,
     connectionStatus: active ? connectionStatus : 'idle',
