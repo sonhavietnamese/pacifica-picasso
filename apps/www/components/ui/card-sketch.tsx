@@ -1,16 +1,62 @@
 'use client'
 
-import { cn } from '@/lib/utils'
+import { cn, formatPrice } from '@/lib/utils'
+import type { OrderSide } from 'pacifica.js'
 
 type State = 'pending' | 'active'
 
-interface CardSketchProps {
-  state: State
+export interface CardSketchProps {
+  state?: State
+  /** e.g. BTC */
+  symbol?: string
+  side?: OrderSide
+  entryPrice?: string
+  amount?: string
+  takeProfit?: string | null
+  stopLoss?: string | null
+  /** Last fill PnL label, e.g. "+$1.23" */
+  pnlLabel?: string | null
+  leverageLabel?: string
 }
 
-export function CardSketch({ state = 'pending' }: CardSketchProps) {
+function sideLabel(side: OrderSide | undefined): string {
+  if (side === 'bid') return 'Long'
+  if (side === 'ask') return 'Short'
+  return '—'
+}
+
+function formatUsdRough(raw: string | undefined): string {
+  if (raw === undefined || raw === '') return '—'
+  const n = Number.parseFloat(raw)
+  if (!Number.isFinite(n)) return '—'
+  return formatPrice(n)
+}
+
+export function CardSketch({
+  state = 'pending',
+  symbol,
+  side,
+  entryPrice,
+  amount,
+  takeProfit,
+  stopLoss,
+  pnlLabel,
+}: CardSketchProps) {
+  const title = symbol ?? '—'
+  const entryDisplay = state === 'pending' ? 'Waiting' : formatUsdRough(entryPrice)
+  const tpDisplay = takeProfit != null && takeProfit !== '' ? formatUsdRough(takeProfit) : '—'
+  const slDisplay = stopLoss != null && stopLoss !== '' ? formatUsdRough(stopLoss) : '—'
+  const pnlDisplay = pnlLabel ?? (state === 'pending' ? '$0' : '—')
+  const pnlNegative = pnlDisplay.startsWith('-')
+  const pnlNeutral = pnlDisplay === '—' || pnlDisplay === '$0'
+
   return (
-    <li className="w-full bg-[#1B1B1B] p-2 rounded-xl relative cursor-pointer group opacity-60">
+    <li
+      className={cn(
+        'w-full bg-[#1B1B1B] p-2 rounded-xl relative cursor-pointer group',
+        state === 'pending' ? 'opacity-60' : 'opacity-100'
+      )}
+    >
       {state != 'pending' && (
         <aside className="absolute top-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
           <button className="bg-[#1B1B1B] rounded-lg p-1 px-1.5 border border-white/5 opacity-80 hover:opacity-100 transition-opacity duration-150">
@@ -19,16 +65,24 @@ export function CardSketch({ state = 'pending' }: CardSketchProps) {
         </aside>
       )}
 
-      <aside className="absolute bottom-2 right-2 pr-1">
-        <span className={cn('text-white text-sm font-druk', 'leading-none', state === 'pending' && 'text-[#fffffff]')}>
-          $0
+      <aside className="absolute bottom-2 right-2 pr-1" id="pnl">
+        <span
+          className={cn(
+            'text-sm font-druk leading-none',
+            state === 'pending' && 'text-white/50',
+            state !== 'pending' && pnlNegative && 'text-rose-400',
+            state !== 'pending' && !pnlNegative && !pnlNeutral && 'text-emerald-400/90',
+            state !== 'pending' && pnlNeutral && 'text-white/80'
+          )}
+        >
+          {pnlDisplay}
         </span>
       </aside>
 
       <div className="relative z-1 flex">
-        <aside className="absolute -top-1 -right-1 bg-black rounded-lg p-2 px-2.5">
+        {/* <aside className="absolute -top-1 -right-1 bg-black rounded-lg p-2 px-2.5">
           <span className="leading-none font-druk text-white text-sm">X3</span>
-        </aside>
+        </aside> */}
 
         {/* <aside className="absolute top-0 right-0 bg-black rounded-lg p-2 px-2.5">
           <span className="leading-none text-white text-sm font-medium">Patient</span>
@@ -54,20 +108,29 @@ export function CardSketch({ state = 'pending' }: CardSketchProps) {
           </figure>
         </div>
 
-        <div className="flex flex-col text-xs gap-1 justify-center font-medium ml-2">
-          <div className="grid grid-cols-2">
+        <div className="flex flex-col text-xs gap-1 justify-center font-medium ml-2 min-w-0 flex-1">
+          {/* <div className="grid grid-cols-2 gap-x-2">
+            <span className="text-white/70 truncate">{title}</span>
+            <span className="text-white font-bold text-right truncate">{sideLabel(side)}</span>
+          </div> */}
+          <div className="grid grid-cols-2 gap-x-2">
             <span className="text-white/70">Entry</span>
-            <span className="text-white font-bold">Waiting</span>
+            <span className="text-white font-bold text-right tabular-nums">{entryDisplay}</span>
           </div>
 
-          <div className="grid grid-cols-2">
+          {/* <div className="grid grid-cols-2 gap-x-2">
+            <span className="text-white/70">Size</span>
+            <span className="text-white font-bold text-right tabular-nums">{amount != null ? amount : '—'}</span>
+          </div> */}
+
+          <div className="grid grid-cols-2 gap-x-2">
             <span className="text-white/70">TP</span>
-            <span className="text-white font-bold">12,342</span>
+            <span className="text-white font-bold text-right tabular-nums">{tpDisplay}</span>
           </div>
 
-          <div className="grid grid-cols-2">
+          <div className="grid grid-cols-2 gap-x-2">
             <span className="text-white/70">SL</span>
-            <span className="text-white font-bold">12,342</span>
+            <span className="text-white font-bold text-right tabular-nums">{slDisplay}</span>
           </div>
         </div>
       </div>

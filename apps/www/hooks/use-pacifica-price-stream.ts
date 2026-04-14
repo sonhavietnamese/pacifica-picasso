@@ -1,6 +1,14 @@
 'use client'
 
-import { PacificaClient, type PriceData } from 'pacifica.js'
+import {
+  acquirePacificaClient,
+  pacificaWsUrl,
+  releasePacificaClient,
+  runWhenPacificaSocketOpen,
+  subscribePricesChannel,
+  unsubscribePricesChannel,
+} from '@/lib/pacifica-ws-pool'
+import { type PriceData } from 'pacifica.js'
 import { useEffect, useRef } from 'react'
 
 type Status = 'connecting' | 'open' | 'closed'
@@ -37,14 +45,8 @@ export function usePacificaPriceStream(
 
   useEffect(() => {
     let cancelled = false
-
-    const client = new PacificaClient({ testnet })
-
-    const onOpen = () => {
-      if (cancelled) return
-      onStatusRef.current?.('open')
-      client.ws.subscribePrices()
-    }
+    const wsUrl = pacificaWsUrl(testnet)
+    const client = acquirePacificaClient(wsUrl)
 
     const onPrices = (prices: PriceData[]) => {
       if (cancelled) return
@@ -66,21 +68,26 @@ export function usePacificaPriceStream(
       if (!cancelled) onStatusRef.current?.('closed')
     }
 
-    client.ws.on('open', onOpen)
+    onStatusRef.current?.('connecting')
+
+    const removeOpenListener = runWhenPacificaSocketOpen(client, () => {
+      if (cancelled) return
+      subscribePricesChannel(wsUrl)
+      onStatusRef.current?.('open')
+    })
+
     client.ws.on('prices', onPrices)
     client.ws.on('error', onError)
     client.ws.on('close', onClose)
 
-    onStatusRef.current?.('connecting')
-    client.connect()
-
     return () => {
       cancelled = true
-      client.ws.off('open', onOpen)
+      removeOpenListener?.()
+      unsubscribePricesChannel(wsUrl)
       client.ws.off('prices', onPrices)
       client.ws.off('error', onError)
       client.ws.off('close', onClose)
-      client.disconnect()
+      releasePacificaClient(wsUrl)
     }
   }, [symbol, testnet, minEmitIntervalMs])
 }

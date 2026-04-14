@@ -44,12 +44,12 @@ export default function SectionConfiguration() {
               <DropdownMenu.Portal>
                 <DropdownMenu.Content
                   side="bottom"
-                  className="bg-black rounded-xl text-center cursor-pointer space-y-1 p-1"
+                  className="bg-black rounded-xl text-center cursor-pointer space-y-1 p-1 outline-none"
                   sideOffset={10}
                 >
                   {RISKS.filter((r) => r !== risk).map((r) => (
                     <DropdownMenu.Item
-                      className="bg-black rounded-lg p-2 px-3 text-center cursor-pointer font-druk leading-none text-sm text-white hover:bg-white/10"
+                      className="bg-black rounded-lg p-2 px-3 text-center cursor-pointer font-druk leading-none text-sm text-white/70 hover:text-white hover:bg-white/10 outline-none"
                       key={r}
                       onClick={() => setRisk(r)}
                     >

@@ -1,7 +1,14 @@
 'use client'
 
 import { PACIFICA_WS_URL } from '@/lib/constants'
-import { PacificaClient, type AccountInfo } from 'pacifica.js'
+import {
+  acquirePacificaClient,
+  releasePacificaClient,
+  runWhenPacificaSocketOpen,
+  subscribeAccountInfoChannel,
+  unsubscribeAccountInfoChannel,
+} from '@/lib/pacifica-ws-pool'
+import { type AccountInfo } from 'pacifica.js'
 import { useEffect, useState } from 'react'
 
 /**
@@ -27,7 +34,8 @@ export function usePacificaAccount(account: string | null | undefined) {
   useEffect(() => {
     if (!account) return
 
-    const client = new PacificaClient({ wsUrl: PACIFICA_WS_URL })
+    const wsUrl = PACIFICA_WS_URL
+    const client = acquirePacificaClient(wsUrl)
     let cancelled = false
 
     // Reset session for this account when the subscription effect runs (WebSocket connects async).
@@ -36,11 +44,11 @@ export function usePacificaAccount(account: string | null | undefined) {
     setError(null)
     setConnectionStatus('connecting')
 
-    const onOpen = () => {
+    const removeOpenListener = runWhenPacificaSocketOpen(client, () => {
       if (cancelled) return
+      subscribeAccountInfoChannel(wsUrl, account)
       setConnectionStatus('open')
-      client.ws.subscribeAccountInfo(account)
-    }
+    })
 
     const onAccountInfo = (info: AccountInfo) => {
       if (cancelled) return
@@ -72,22 +80,20 @@ export function usePacificaAccount(account: string | null | undefined) {
       setConnectionStatus('closed')
     }
 
-    client.ws.on('open', onOpen)
     client.ws.on('account_info', onAccountInfo)
     client.ws.on('ws_error', onWsError)
     client.ws.on('error', onError)
     client.ws.on('close', onClose)
 
-    client.connect()
-
     return () => {
       cancelled = true
-      client.ws.off('open', onOpen)
+      removeOpenListener?.()
+      unsubscribeAccountInfoChannel(wsUrl, account)
       client.ws.off('account_info', onAccountInfo)
       client.ws.off('ws_error', onWsError)
       client.ws.off('error', onError)
       client.ws.off('close', onClose)
-      client.disconnect()
+      releasePacificaClient(wsUrl)
     }
   }, [account])
 
