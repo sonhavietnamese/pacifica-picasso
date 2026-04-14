@@ -8,6 +8,8 @@ export const env = createEnv({
 
     FAUCET_PRIVATE_KEY: z.string().min(1),
     SPONSOR_PRIVATE_KEY: z.string().min(1),
+
+    DATABASE_URL: z.string().min(1),
   },
   client: {
     NEXT_PUBLIC_PRIVY_APP_ID: z.string().min(1),
@@ -30,5 +32,7 @@ export const env = createEnv({
 
     NEXT_PUBLIC_SOLANA_RPC_URL: process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
     NEXT_PUBLIC_SOLANA_WSS_URL: process.env.NEXT_PUBLIC_SOLANA_WSS_URL,
+
+    DATABASE_URL: process.env.DATABASE_URL,
   },
 })

@@ -134,16 +134,18 @@ export function SectionSketchbook() {
         ) : null}
       </div>
 
-      <button className="bg-yellow-500 text-white px-4 py-2 rounded-md" onClick={createStopOrder}>
-        Create Order
-      </button>
+      <div className="flex ">
+        <button className="bg-yellow-500 text-white px-4 py-2 rounded-md" onClick={createStopOrder}>
+          Create Order
+        </button>
 
-      <button className="bg-yellow-500 text-white px-4 py-2 rounded-md" onClick={cancelAllOrders}>
-        Cancel Order
-      </button>
-      <button className="bg-yellow-500 text-white px-4 py-2 rounded-md" onClick={cancelStopOrder}>
-        Cancel Stop Order
-      </button>
+        <button className="bg-yellow-500 text-white px-4 py-2 rounded-md" onClick={cancelAllOrders}>
+          Cancel Order
+        </button>
+        <button className="bg-yellow-500 text-white px-4 py-2 rounded-md" onClick={cancelStopOrder}>
+          Cancel Stop Order
+        </button>
+      </div>
     </section>
   )
 }
