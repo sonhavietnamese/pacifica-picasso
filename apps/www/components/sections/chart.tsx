@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { TextMorph } from 'torph/react'
 import { DotBackground } from '../ui/dot-background'
 import { PriceArrowIndicator } from '../ui/price-arrow-indicator'
+import { v4 as uuidv4 } from 'uuid'
 
 const MAX_POINTS = 4000
 
@@ -44,7 +45,7 @@ export function SectionChart() {
 
   const handleDrawEnd = useCallback(
     async (line: DrawLine) => {
-      addLine(line)
+      addLine({ ...line, id: uuidv4() })
     },
     [addLine]
   )

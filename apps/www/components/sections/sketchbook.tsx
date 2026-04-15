@@ -8,6 +8,8 @@ import SectionHistory from './history'
 import SectionLivePosition from './live-position'
 import SectionOrders from './orders'
 import useSketchbook from '@/hooks/use-sketchbook'
+import { usePacificaPositions } from '@/hooks/use-pacifica-positions'
+import { usePacificaTradeHistory } from '@/hooks/use-pacifica-trade-history'
 
 export function SectionSketchbook() {
   const tab = useSketchbookStore((state) => state.tab)
@@ -23,6 +25,21 @@ export function SectionSketchbook() {
   } = usePacificaOpenOrders(address)
 
   const { livePositions, historyPositions } = useSketchbook(address)
+
+  const { refetch: refetchLivePositions } = usePacificaPositions(address)
+  const { refetch: refetchHistoryPositions } = usePacificaTradeHistory(address)
+
+  const onChangeTab = (tab: 'live' | 'history' | 'orders') => {
+    setTab(tab)
+
+    if (tab === 'live') {
+      refetchLivePositions()
+    } else if (tab === 'history') {
+      refetchHistoryPositions()
+    } else if (tab === 'orders') {
+      refetchOrders()
+    }
+  }
 
   const createStopOrder = async () => {
     if (!user) return
@@ -86,7 +103,7 @@ export function SectionSketchbook() {
         <h2 className="font-druk text-base text-white ml-1">Your Sketchbook</h2>
         <div className="bg-[#262626] w-fit p-1 rounded-xl mt-2 font-medium">
           <button
-            onClick={() => setTab('live')}
+            onClick={() => onChangeTab('live')}
             className={cn(
               'text-white/70 px-2.5 p-2 bg-[#262626] rounded-lg',
               tab === 'live' && 'bg-[#171717] text-white'
@@ -95,7 +112,7 @@ export function SectionSketchbook() {
             Live
           </button>
           <button
-            onClick={() => setTab('history')}
+            onClick={() => onChangeTab('history')}
             className={cn(
               'text-white/70 px-2.5 p-2 rounded-lg bg-[#262626] ',
               tab === 'history' && 'bg-[#171717] text-white'
@@ -104,7 +121,7 @@ export function SectionSketchbook() {
             History
           </button>
           <button
-            onClick={() => setTab('orders')}
+            onClick={() => onChangeTab('orders')}
             className={cn(
               'text-white/70 px-2.5 p-2 rounded-lg bg-[#262626] ',
               tab === 'orders' && 'bg-[#171717] text-white'

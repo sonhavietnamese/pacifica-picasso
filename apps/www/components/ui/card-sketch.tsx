@@ -4,49 +4,34 @@ import { cn, formatPrice, formatUsdRough } from '@/lib/utils'
 import { usePrivy } from '@privy-io/react-auth'
 import type { OrderSide } from 'pacifica.js'
 import { StrokePreview } from './stroke-review'
-import { DrawLinePoint } from '@/lib/linelive'
-import { useCallback, useMemo } from 'react'
-import { usePacificaPriceStream } from '@/hooks/use-pacifica-price-stream'
+import { useEffect, useMemo } from 'react'
+import { LivePosition } from '@/hooks/use-sketchbook'
+import NumberFlow from '@number-flow/react'
 
 type State = 'pending' | 'active'
 type Bias = 'LONG' | 'SHORT' | 'NEUTRAL'
 
 export interface CardSketchProps {
+  id: string
   state?: State
-  /** e.g. BTC */
   symbol?: string
   side?: OrderSide
   entryPrice?: string
   amount?: string
   takeProfit?: string | null
   stopLoss?: string | null
-  /** Last fill PnL label, e.g. "+$1.23" */
-  pnlLabel?: string | null
   leverageLabel?: string
-  points: DrawLinePoint[]
+  drawLine: LivePosition
 }
 
 const CHECKPOINT_COUNT = 6
 
-export function CardSketch({
-  state = 'pending',
-  symbol,
-  side,
-  entryPrice,
-  amount,
-  takeProfit,
-  stopLoss,
-  pnlLabel,
-  points,
-}: CardSketchProps) {
+const poolInflight = new Set<string>()
+const poolCompleted = new Set<string>()
+
+export function CardSketch({ id, state = 'pending', symbol, side, entryPrice, amount, drawLine }: CardSketchProps) {
   const { user } = usePrivy()
-  const title = symbol ?? '—'
   const entryDisplay = state === 'pending' ? 'Waiting' : formatUsdRough(entryPrice)
-  const tpDisplay = takeProfit != null && takeProfit !== '' ? formatUsdRough(takeProfit) : '—'
-  const slDisplay = stopLoss != null && stopLoss !== '' ? formatUsdRough(stopLoss) : '—'
-  const pnlDisplay = pnlLabel ?? (state === 'pending' ? '$0' : '—')
-  const pnlNegative = pnlDisplay.startsWith('-')
-  const pnlNeutral = pnlDisplay === '—' || pnlDisplay === '$0'
 
   const closePosition = async () => {
     if (!user) return
@@ -66,37 +51,30 @@ export function CardSketch({
     console.log(data)
   }
 
-  const onPriceUpdate = useCallback((price: number) => {
-    console.log(price)
-    console.log(Math.round(Date.now() / 1000))
-  }, [])
-
-  usePacificaPriceStream('SOL', onPriceUpdate)
-
   const normalizedTimeLine = useMemo(() => {
-    return points.map((point) => {
+    return drawLine.drawLine.points.map((point) => {
       return {
         ...point,
         time: Math.round(point.time),
       }
     })
-  }, [points])
+  }, [drawLine.drawLine.points])
 
   const bias = useMemo(() => {
-    const firstPoint = points[0]
-    const lastPoint = points[points.length - 1]
+    const firstPoint = drawLine.drawLine.points[0]
+    const lastPoint = drawLine.drawLine.points[drawLine.drawLine.points.length - 1]
 
     const bias = lastPoint.value - firstPoint.value
     return bias > 0 ? 'LONG' : bias < -0 ? 'SHORT' : 'NEUTRAL'
-  }, [points])
+  }, [drawLine.drawLine.points])
 
   const lowestPoint = useMemo(() => {
-    return Math.min(...points.map((point) => point.value))
-  }, [points])
+    return Math.min(...drawLine.drawLine.points.map((point) => point.value))
+  }, [drawLine.drawLine.points])
 
   const highestPoint = useMemo(() => {
-    return Math.max(...points.map((point) => point.value))
-  }, [points])
+    return Math.max(...drawLine.drawLine.points.map((point) => point.value))
+  }, [drawLine.drawLine.points])
 
   const relativeTimeCheckpoints = useMemo(() => {
     const earliestTime = Math.min(...normalizedTimeLine.map((point) => point.time))
@@ -125,7 +103,64 @@ export function CardSketch({
     return closestPoints
   }, [normalizedTimeLine])
 
-  console.log(relativeTimeCheckpoints)
+  useEffect(() => {
+    if (bias === 'NEUTRAL' || !user?.wallet?.id) return
+
+    const lineId = drawLine.drawLine.id
+    if (poolCompleted.has(lineId) || poolInflight.has(lineId)) return
+
+    const checkpoints: { index: number; time: number; value: number }[] = []
+    relativeTimeCheckpoints.forEach((p, i) => {
+      if (p) checkpoints.push({ index: i, time: p.time, value: p.value })
+    })
+    if (checkpoints.length === 0) return
+
+    poolInflight.add(lineId)
+
+    const tp = bias === 'LONG' ? highestPoint : lowestPoint
+    const sl = bias === 'LONG' ? lowestPoint : highestPoint
+
+    void fetch('/api/pool', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lineId,
+        walletId: user.wallet.id,
+        symbol: symbol ?? 'SOL',
+        bias,
+        checkpoints,
+        tp,
+        sl,
+        amount: amount ?? '0.1',
+        points: drawLine.drawLine.points.map((p) => ({ time: p.time, value: p.value })),
+      }),
+    })
+      .then(async (res) => {
+        const text = await res.text()
+        try {
+          const data = text ? (JSON.parse(text) as { success?: boolean }) : {}
+          if (res.ok && data.success) poolCompleted.add(lineId)
+        } catch {
+          void 0
+        }
+      })
+      .catch(() => {
+        void 0
+      })
+      .finally(() => {
+        poolInflight.delete(lineId)
+      })
+  }, [
+    bias,
+    user?.wallet?.id,
+    drawLine.drawLine.id,
+    drawLine.drawLine.points,
+    relativeTimeCheckpoints,
+    symbol,
+    amount,
+    highestPoint,
+    lowestPoint,
+  ])
 
   return (
     <li
@@ -134,35 +169,25 @@ export function CardSketch({
         state === 'pending' ? 'opacity-60' : 'opacity-100'
       )}
     >
-      {state != 'pending' && (
-        <aside className="absolute top-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          <button
-            onClick={closePosition}
-            className="bg-[#1B1B1B] rounded-lg p-1 px-1.5 border border-white/5 opacity-80 hover:opacity-100 transition-opacity duration-150"
-          >
-            <span className="leading-none text-white/80 text-sm font-medium ">Close</span>
-          </button>
-        </aside>
-      )}
+      <aside className="absolute top-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+        <button
+          onClick={closePosition}
+          className="bg-[#1B1B1B] rounded-lg p-1 px-1.5 border border-white/5 opacity-80 hover:opacity-100 transition-opacity duration-150"
+        >
+          <span className="leading-none text-white/80 text-sm font-medium ">Close</span>
+        </button>
+      </aside>
 
       <aside className="absolute bottom-2 right-2 pr-1" id="pnl">
-        <span
-          className={cn(
-            'text-sm font-druk leading-none',
-            state === 'pending' && 'text-white/50',
-            state !== 'pending' && pnlNegative && 'text-rose-400',
-            state !== 'pending' && !pnlNegative && !pnlNeutral && 'text-emerald-400/90',
-            state !== 'pending' && pnlNeutral && 'text-white/80'
-          )}
-        >
-          {pnlDisplay}
+        <span className={cn('text-sm font-druk leading-none', state === 'pending' && 'text-white/50')}>
+          <NumberFlow value={drawLine.crossCount} format={{ style: 'currency', currency: 'USD' }} />
         </span>
       </aside>
 
       <div className="relative z-1 flex">
-        {/* <aside className="absolute -top-1 -right-1 bg-black rounded-lg p-2 px-2.5">
-          <span className="leading-none font-druk text-white text-sm">X3</span>
-        </aside> */}
+        <aside className="absolute -top-1 -right-1 bg-black rounded-lg p-2 px-2.5">
+          <span className="leading-none font-druk text-white text-sm">X{drawLine.crossCount ?? 0}</span>
+        </aside>
 
         {/* <aside className="absolute top-0 right-0 bg-black rounded-lg p-2 px-2.5">
           <span className="leading-none text-white text-sm font-medium">Patient</span>
@@ -170,7 +195,7 @@ export function CardSketch({
 
         <div className="w-[90px] h-[80px] p-2 rounded flex items-center justify-center bg-[#1E1E1E]">
           <figure className="w-full h-full aspect-square overflow-hidden">
-            <StrokePreview points={points} stroke="white" strokeWidth={8} />
+            <StrokePreview points={drawLine.drawLine.points} stroke="white" strokeWidth={8} />
           </figure>
         </div>
 

@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { PacificaTradeHistoryRow, usePacificaTradeHistory } from './use-pacifica-trade-history'
 
 export type LivePosition = {
-  line: DrawLine
+  drawLine: DrawLine
+  crossCount: number
 }
 
 export type HistoryPosition = PacificaTradeHistoryRow
@@ -13,6 +14,7 @@ export default function useSketchbook(address: string | undefined) {
   const [historyPositions, setHistoryPositions] = useState<HistoryPosition[]>([])
 
   const lines = useDrawLinesStore((state) => state.lines)
+  const crossCounts = useDrawLinesStore((state) => state.crossCounts)
 
   const { data: historyData } = usePacificaTradeHistory(address, { limit: 50 })
 
@@ -26,10 +28,11 @@ export default function useSketchbook(address: string | undefined) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLivePositions(
       lines.map((line) => ({
-        line,
+        drawLine: line,
+        crossCount: crossCounts[lines.indexOf(line)],
       }))
     )
-  }, [lines])
+  }, [lines, crossCounts])
 
   useEffect(() => {
     if (historyData) {
