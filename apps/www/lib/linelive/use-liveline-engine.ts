@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { v4 as uuidv4 } from 'uuid'
 import { applyDpr, getDpr } from './canvas/dpr'
 import type { MultiSeriesEntry } from './draw'
 import { createShakeState, drawCandleFrame, drawFrame, drawMultiFrame, FADE_EDGE_WIDTH } from './draw'
@@ -868,11 +869,12 @@ export function useLivelineEngine(
       if (path.length >= 2) {
         const cfg = configRef.current
         cfg.onDrawEnd?.({
+          id: uuidv4(),
           points: path.map((p) => ({ ...p })),
           stroke: cfg.draw?.stroke,
           strokeWidth: cfg.draw?.strokeWidth,
           texture: cfg.draw?.texture,
-        })
+        } as DrawLine)
       }
       drawPathRef.current = []
     }
@@ -2351,13 +2353,19 @@ export function useLivelineEngine(
     if (drawLayout && (cfg.draw?.enabled || drawLines.length > 0)) {
       const activeLine =
         isDrawingRef.current && drawPathRef.current.length >= 2
-          ? { points: drawPathRef.current, stroke: cfg.draw?.stroke, strokeWidth: cfg.draw?.strokeWidth, texture: cfg.draw?.texture }
+          ? {
+              points: drawPathRef.current,
+              stroke: cfg.draw?.stroke,
+              strokeWidth: cfg.draw?.strokeWidth,
+              texture: cfg.draw?.texture,
+            }
           : null
       drawUserLines(
         ctx,
         drawLayout,
         drawLines,
-        activeLine,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        activeLine as any,
         cfg.draw?.stroke ?? cfg.palette.line,
         cfg.draw?.strokeWidth ?? 2,
         cfg.draw?.texture,
