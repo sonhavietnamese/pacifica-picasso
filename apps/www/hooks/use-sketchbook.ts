@@ -37,11 +37,10 @@ export default function useSketchbook(address: string | undefined) {
   useEffect(() => {
     if (historyData) {
       // filter out all the position with the order_id or client_order_id not contain the word "picasso" in it
-      const filteredHistoryPositions = historyData.pages
-        .flatMap((page) => page.data)
-        .filter((position) => {
-          return position.order_id.toString().includes('picasso') || position.client_order_id.includes('picasso')
-        })
+      const filteredHistoryPositions = historyData.pages.flatMap((page) => page.data)
+      // .filter((position) => {
+      //   return position.order_id.toString().includes('picasso') || position.client_order_id.includes('picasso')
+      // })
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setHistoryPositions(filteredHistoryPositions)
     }

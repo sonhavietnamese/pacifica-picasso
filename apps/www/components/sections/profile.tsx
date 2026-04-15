@@ -54,7 +54,7 @@ export default function SectionProfile({ user }: SectionProfileProps) {
                     </svg>
                   </figure>
 
-                  <span className="text-white text-xs font-druk">12,345</span>
+                  <span className="text-white text-xs font-druk">342</span>
                 </div>
               </div>
 

@@ -2,6 +2,8 @@ import { Token } from '@/types'
 
 export const PACIFICA_API_BASE = 'https://test-api.pacifica.fi/api/v1'
 export const PACIFICA_API_ENDPOINTS = {
+  /** Per-market `tick_size`, `lot_size`, etc. — GET, no auth. */
+  GET_INFO: `${PACIFICA_API_BASE}/info`,
   CREATE_ORDER: `${PACIFICA_API_BASE}/orders/create`,
   CREATE_MARKET_ORDER: `${PACIFICA_API_BASE}/orders/create_market`,
   CREATE_STOP_ORDER: `${PACIFICA_API_BASE}/orders/stop/create`,

@@ -9,6 +9,7 @@ import { TextMorph } from 'torph/react'
 import { DotBackground } from '../ui/dot-background'
 import { PriceArrowIndicator } from '../ui/price-arrow-indicator'
 import { v4 as uuidv4 } from 'uuid'
+import { usePrivy } from '@privy-io/react-auth'
 
 const MAX_POINTS = 4000
 
@@ -17,10 +18,14 @@ export function SectionChart() {
   const addLine = useDrawLinesStore((s) => s.addLine)
   const setCrossCount = useDrawLinesStore((s) => s.setCrossCount)
 
+  const { user } = usePrivy()
+
   const [data, setData] = useState<LivelinePoint[]>([])
   const [value, setValue] = useState(0)
   const [priceDirection, setPriceDirection] = useState<'up' | 'down'>('up')
   const lastDirectionBucketRef = useRef<number | null>(null)
+  /** Latest trade price for `/api/pool` (SL stop vs mark). */
+  const lastPriceRef = useRef(0)
 
   const { token } = useTokenStore()
 
@@ -41,13 +46,53 @@ export function SectionChart() {
       return next.length > MAX_POINTS ? next.slice(-MAX_POINTS) : next
     })
     setValue(rawPrice)
+    lastPriceRef.current = rawPrice
   }, [])
 
   const handleDrawEnd = useCallback(
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     async (line: DrawLine) => {
       addLine({ ...line, id: uuidv4() })
+
+      if (!user?.wallet?.id) return
+      const startVal = line.points[0].value
+      const endVal = line.points[line.points.length - 1].value
+      /** Stroke direction (first → last), not `max − min` on the polyline (wobble can move extrema). */
+      const direction = endVal - startVal
+
+      if (direction === 0) return
+
+      const isLong = direction > 0
+      /** LONG → open with bid; SHORT (falling line) → open with ask. */
+      const side = isLong ? 'bid' : 'ask'
+      /**
+       * Single sweep: rising line starts low / ends high → TP at end, SL at start.
+       * Falling line starts high / ends low → TP at end (low), SL at start (high).
+       */
+      const tp = endVal
+      const sl = startVal
+      const entryPrice = line.points[Math.floor(line.points.length / 2)].value
+
+      const amount = '0.2'
+      console.log(side, tp.toFixed(2), sl.toFixed(2), entryPrice.toFixed(2), amount)
+
+      const order = await fetch('/api/pool', {
+        method: 'POST',
+        body: JSON.stringify({
+          walletId: user.wallet.id,
+          symbol: token.symbol,
+          side,
+          tp: tp,
+          sl: sl,
+          entry: entryPrice,
+          amount: '0.2',
+          markPrice: lastPriceRef.current,
+        }),
+      })
+      const data = await order.json()
+      console.log(data)
     },
-    [addLine]
+    [addLine, user?.wallet?.id, token.symbol]
   )
 
   usePacificaPriceStream(token.symbol, onPriceUpdate)

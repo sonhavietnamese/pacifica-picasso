@@ -7,6 +7,7 @@ import { StrokePreview } from './stroke-review'
 import { useEffect, useMemo } from 'react'
 import { LivePosition } from '@/hooks/use-sketchbook'
 import NumberFlow from '@number-flow/react'
+import { uuidv4 } from 'zod'
 
 type State = 'pending' | 'active'
 type Bias = 'LONG' | 'SHORT' | 'NEUTRAL'
@@ -23,11 +24,6 @@ export interface CardSketchProps {
   leverageLabel?: string
   drawLine: LivePosition
 }
-
-const CHECKPOINT_COUNT = 6
-
-const poolInflight = new Set<string>()
-const poolCompleted = new Set<string>()
 
 export function CardSketch({ id, state = 'pending', symbol, side, entryPrice, amount, drawLine }: CardSketchProps) {
   const { user } = usePrivy()
@@ -51,15 +47,6 @@ export function CardSketch({ id, state = 'pending', symbol, side, entryPrice, am
     console.log(data)
   }
 
-  const normalizedTimeLine = useMemo(() => {
-    return drawLine.drawLine.points.map((point) => {
-      return {
-        ...point,
-        time: Math.round(point.time),
-      }
-    })
-  }, [drawLine.drawLine.points])
-
   const bias = useMemo(() => {
     const firstPoint = drawLine.drawLine.points[0]
     const lastPoint = drawLine.drawLine.points[drawLine.drawLine.points.length - 1]
@@ -76,91 +63,39 @@ export function CardSketch({ id, state = 'pending', symbol, side, entryPrice, am
     return Math.max(...drawLine.drawLine.points.map((point) => point.value))
   }, [drawLine.drawLine.points])
 
-  const relativeTimeCheckpoints = useMemo(() => {
-    const earliestTime = Math.min(...normalizedTimeLine.map((point) => point.time))
-    const latestTime = Math.max(...normalizedTimeLine.map((point) => point.time))
+  // useEffect(() => {
+  //   const handle = async () => {
+  //     if (bias === 'NEUTRAL' || !user?.wallet?.id) return
 
-    const distance = Math.round((latestTime - earliestTime) / CHECKPOINT_COUNT)
-    const timeCheckpoints = Array.from({ length: CHECKPOINT_COUNT }, (_, i) => earliestTime + distance * (i + 1))
+  //     const lineId = drawLine.drawLine.id
 
-    // remove the first and last timepoints
-    const normalizedTimeCheckpoints = timeCheckpoints.slice(1, -1)
+  //     const tp = bias === 'LONG' ? highestPoint : lowestPoint
+  //     const sl = bias === 'LONG' ? lowestPoint : highestPoint
 
-    // For each normalizedTimeCheckpoint, find the draw point with time closest to it
-    const closestPoints = normalizedTimeCheckpoints.map((checkpoint) => {
-      let minDist = Infinity
-      let closest = null
-      for (const point of normalizedTimeLine) {
-        const dist = Math.abs(point.time - checkpoint)
-        if (dist < minDist) {
-          minDist = dist
-          closest = point
-        }
-      }
-      return closest
-    })
+  //     const entryPrice = drawLine.drawLine.points[Math.floor(drawLine.drawLine.points.length / 2)].value
 
-    return closestPoints
-  }, [normalizedTimeLine])
+  //     // create stop order for entry, tp, and sl
+  //     const order = await fetch('/api/pool', {
+  //       method: 'POST',
+  //       body: JSON.stringify({
+  //         walletId: user.wallet.id,
+  //         symbol: 'SOL',
+  //         side: side,
+  //         tp: tp,
+  //         sl: sl,
+  //         lineId: lineId,
+  //         entry: entryPrice,
+  //         amount: '0.2',
+  //         points: drawLine.drawLine.points.map((p) => ({ time: p.time, value: p.value })),
+  //       }),
+  //     })
 
-  useEffect(() => {
-    if (bias === 'NEUTRAL' || !user?.wallet?.id) return
+  //     const data = await order.json()
+  //     console.log(data)
+  //   }
 
-    const lineId = drawLine.drawLine.id
-    if (poolCompleted.has(lineId) || poolInflight.has(lineId)) return
-
-    const checkpoints: { index: number; time: number; value: number }[] = []
-    relativeTimeCheckpoints.forEach((p, i) => {
-      if (p) checkpoints.push({ index: i, time: p.time, value: p.value })
-    })
-    if (checkpoints.length === 0) return
-
-    poolInflight.add(lineId)
-
-    const tp = bias === 'LONG' ? highestPoint : lowestPoint
-    const sl = bias === 'LONG' ? lowestPoint : highestPoint
-
-    void fetch('/api/pool', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        lineId,
-        walletId: user.wallet.id,
-        symbol: symbol ?? 'SOL',
-        bias,
-        checkpoints,
-        tp,
-        sl,
-        amount: amount ?? '0.1',
-        points: drawLine.drawLine.points.map((p) => ({ time: p.time, value: p.value })),
-      }),
-    })
-      .then(async (res) => {
-        const text = await res.text()
-        try {
-          const data = text ? (JSON.parse(text) as { success?: boolean }) : {}
-          if (res.ok && data.success) poolCompleted.add(lineId)
-        } catch {
-          void 0
-        }
-      })
-      .catch(() => {
-        void 0
-      })
-      .finally(() => {
-        poolInflight.delete(lineId)
-      })
-  }, [
-    bias,
-    user?.wallet?.id,
-    drawLine.drawLine.id,
-    drawLine.drawLine.points,
-    relativeTimeCheckpoints,
-    symbol,
-    amount,
-    highestPoint,
-    lowestPoint,
-  ])
+  //   handle()
+  // }, [bias, user?.wallet?.id, drawLine.drawLine.id, drawLine.drawLine.points, highestPoint, lowestPoint, side])
 
   return (
     <li
