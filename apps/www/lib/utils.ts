@@ -59,3 +59,10 @@ export function formatTradePnl(pnl: string) {
   const sign = n > 0 ? '+' : '-'
   return `${sign}$${formatPrice(Math.abs(n))}`
 }
+
+export function formatUsdRough(raw: string | undefined): string {
+  if (raw === undefined || raw === '') return '—'
+  const n = Number.parseFloat(raw)
+  if (!Number.isFinite(n)) return '—'
+  return formatPrice(n)
+}

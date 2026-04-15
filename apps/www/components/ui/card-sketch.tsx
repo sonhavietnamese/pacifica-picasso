@@ -1,10 +1,15 @@
 'use client'
 
-import { cn, formatPrice } from '@/lib/utils'
+import { cn, formatPrice, formatUsdRough } from '@/lib/utils'
 import { usePrivy } from '@privy-io/react-auth'
 import type { OrderSide } from 'pacifica.js'
+import { StrokePreview } from './stroke-review'
+import { DrawLinePoint } from '@/lib/linelive'
+import { useCallback, useMemo } from 'react'
+import { usePacificaPriceStream } from '@/hooks/use-pacifica-price-stream'
 
 type State = 'pending' | 'active'
+type Bias = 'LONG' | 'SHORT' | 'NEUTRAL'
 
 export interface CardSketchProps {
   state?: State
@@ -18,20 +23,10 @@ export interface CardSketchProps {
   /** Last fill PnL label, e.g. "+$1.23" */
   pnlLabel?: string | null
   leverageLabel?: string
+  points: DrawLinePoint[]
 }
 
-function sideLabel(side: OrderSide | undefined): string {
-  if (side === 'bid') return 'Long'
-  if (side === 'ask') return 'Short'
-  return '—'
-}
-
-function formatUsdRough(raw: string | undefined): string {
-  if (raw === undefined || raw === '') return '—'
-  const n = Number.parseFloat(raw)
-  if (!Number.isFinite(n)) return '—'
-  return formatPrice(n)
-}
+const CHECKPOINT_COUNT = 6
 
 export function CardSketch({
   state = 'pending',
@@ -42,6 +37,7 @@ export function CardSketch({
   takeProfit,
   stopLoss,
   pnlLabel,
+  points,
 }: CardSketchProps) {
   const { user } = usePrivy()
   const title = symbol ?? '—'
@@ -69,6 +65,67 @@ export function CardSketch({
     const data = await response.json()
     console.log(data)
   }
+
+  const onPriceUpdate = useCallback((price: number) => {
+    console.log(price)
+    console.log(Math.round(Date.now() / 1000))
+  }, [])
+
+  usePacificaPriceStream('SOL', onPriceUpdate)
+
+  const normalizedTimeLine = useMemo(() => {
+    return points.map((point) => {
+      return {
+        ...point,
+        time: Math.round(point.time),
+      }
+    })
+  }, [points])
+
+  const bias = useMemo(() => {
+    const firstPoint = points[0]
+    const lastPoint = points[points.length - 1]
+
+    const bias = lastPoint.value - firstPoint.value
+    return bias > 0 ? 'LONG' : bias < -0 ? 'SHORT' : 'NEUTRAL'
+  }, [points])
+
+  const lowestPoint = useMemo(() => {
+    return Math.min(...points.map((point) => point.value))
+  }, [points])
+
+  const highestPoint = useMemo(() => {
+    return Math.max(...points.map((point) => point.value))
+  }, [points])
+
+  const relativeTimeCheckpoints = useMemo(() => {
+    const earliestTime = Math.min(...normalizedTimeLine.map((point) => point.time))
+    const latestTime = Math.max(...normalizedTimeLine.map((point) => point.time))
+
+    const distance = Math.round((latestTime - earliestTime) / CHECKPOINT_COUNT)
+    const timeCheckpoints = Array.from({ length: CHECKPOINT_COUNT }, (_, i) => earliestTime + distance * (i + 1))
+
+    // remove the first and last timepoints
+    const normalizedTimeCheckpoints = timeCheckpoints.slice(1, -1)
+
+    // For each normalizedTimeCheckpoint, find the draw point with time closest to it
+    const closestPoints = normalizedTimeCheckpoints.map((checkpoint) => {
+      let minDist = Infinity
+      let closest = null
+      for (const point of normalizedTimeLine) {
+        const dist = Math.abs(point.time - checkpoint)
+        if (dist < minDist) {
+          minDist = dist
+          closest = point
+        }
+      }
+      return closest
+    })
+
+    return closestPoints
+  }, [normalizedTimeLine])
+
+  console.log(relativeTimeCheckpoints)
 
   return (
     <li
@@ -113,47 +170,28 @@ export function CardSketch({
 
         <div className="w-[90px] h-[80px] p-2 rounded flex items-center justify-center bg-[#1E1E1E]">
           <figure className="w-full h-full aspect-square overflow-hidden">
-            <svg
-              className="w-full h-full"
-              width="72"
-              height="40"
-              viewBox="0 0 72 40"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M1.3418 35.1045L10.7575 26.4481C15.1788 22.3833 17.3895 20.351 19.1852 20.7222C20.9809 21.0935 22.4564 24.401 25.4073 31.016C26.5768 33.6377 28.1591 35.9632 30.2972 37.3404C42.7711 45.3748 32.3682 -5.81598 44.8308 2.23617C46.2405 3.14701 47.4725 4.51235 48.5332 6.07121C52.198 11.4574 54.0304 14.1505 55.7411 14.2857C57.4518 14.4208 59.2639 12.4955 62.8879 8.64498L69.7615 1.3418"
-                stroke="white"
-                strokeWidth="2.68313"
-                strokeLinecap="round"
-              />
-            </svg>
+            <StrokePreview points={points} stroke="white" strokeWidth={8} />
           </figure>
         </div>
 
-        <div className="flex flex-col text-xs gap-1 justify-center font-medium ml-2 min-w-0 flex-1">
-          {/* <div className="grid grid-cols-2 gap-x-2">
-            <span className="text-white/70 truncate">{title}</span>
-            <span className="text-white font-bold text-right truncate">{sideLabel(side)}</span>
-          </div> */}
+        <div className="flex flex-col text-xs gap-1 justify-center font-medium ml-2">
           <div className="grid grid-cols-2 gap-x-2">
             <span className="text-white/70">Entry</span>
             <span className="text-white font-bold text-right tabular-nums">{entryDisplay}</span>
           </div>
 
-          {/* <div className="grid grid-cols-2 gap-x-2">
-            <span className="text-white/70">Size</span>
-            <span className="text-white font-bold text-right tabular-nums">{amount != null ? amount : '—'}</span>
-          </div> */}
-
           <div className="grid grid-cols-2 gap-x-2">
             <span className="text-white/70">TP</span>
-            <span className="text-white font-bold text-right tabular-nums">{tpDisplay}</span>
+            <span className="text-white font-bold text-right tabular-nums">
+              {bias === 'LONG' ? formatUsdRough(highestPoint.toString()) : formatUsdRough(lowestPoint.toString())}
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-x-2">
             <span className="text-white/70">SL</span>
-            <span className="text-white font-bold text-right tabular-nums">{slDisplay}</span>
+            <span className="text-white font-bold text-right tabular-nums">
+              {bias === 'LONG' ? formatUsdRough(lowestPoint.toString()) : formatUsdRough(highestPoint.toString())}
+            </span>
           </div>
         </div>
       </div>

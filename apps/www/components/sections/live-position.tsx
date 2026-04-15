@@ -1,39 +1,18 @@
 'use client'
 
 import { type PacificaPosition, positionSideToOrderSide } from '@/hooks/use-pacifica-positions'
-import { DrawLine } from '@/lib/linelive'
-import { LineCard } from '../line-card'
 import { CardSketch } from '../ui/card-sketch'
+import { LivePosition } from '@/hooks/use-sketchbook'
 
 interface SectionLivePositionProps {
-  address: string
-  positions: PacificaPosition[]
-  drawLines: DrawLine[]
+  positions: LivePosition[]
 }
 
-export default function SectionLivePosition({ address, positions, drawLines }: SectionLivePositionProps) {
-  if (!address) return null
-
+export default function SectionLivePosition({ positions }: SectionLivePositionProps) {
   return (
     <ul className="w-full h-full rounded-xl space-y-2">
       {positions.length === 0 ? <p className="text-white/50">No draw yet</p> : null}
-      {positions.length > 0
-        ? positions.map((p) => (
-            <CardSketch
-              key={`${p.symbol}-${p.side}`}
-              state="active"
-              symbol={p.symbol}
-              side={positionSideToOrderSide(p.side)}
-              entryPrice={p.entry_price}
-              amount={p.amount}
-              pnlLabel={null}
-            />
-          ))
-        : null}
-
-      {drawLines.map((line) => (
-        <LineCard key={line.points[0].time} line={line} />
-      ))}
+      {positions.length > 0 ? positions.map((p, index) => <CardSketch key={index} points={p.line.points} />) : null}
     </ul>
   )
 }

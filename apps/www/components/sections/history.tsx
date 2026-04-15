@@ -1,43 +1,20 @@
 'use client'
 
-import { usePacificaTradeHistory } from '@/hooks/use-pacifica-trade-history'
+import { HistoryPosition } from '@/hooks/use-sketchbook'
 import { cn, formatPrice, formatTradePnl } from '@/lib/utils'
 
-export default function SectionHistory({ address }: { address: string | undefined }) {
-  const {
-    data,
-    isPending,
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = usePacificaTradeHistory(address, { limit: 50 })
+interface SectionHistoryProps {
+  positions: HistoryPosition[]
+}
 
-  const rows = data?.pages.flatMap((p) => p.data) ?? []
-
-  if (!address) {
-    return (
-      <ul className="w-full rounded-xl space-y-1.5 font-sans text-xs">
-        <li className="text-white/50">Connect a wallet to see fills.</li>
-      </ul>
-    )
-  }
-
-  if (error) {
-    return <p className="text-sm text-red-400/90">{error.message}</p>
-  }
-
-  if (isPending) {
-    return <p className="text-xs text-white/40">Loading trade history…</p>
-  }
-
+export default function SectionHistory({ positions }: SectionHistoryProps) {
   return (
     <div className="w-full space-y-2">
       <ul className="w-full rounded-xl space-y-1.5 font-sans text-xs">
-        {rows.length === 0 ? (
+        {positions.length === 0 ? (
           <li className="text-white/50">No trades yet.</li>
         ) : (
-          rows.map((t) => {
+          positions.map((t) => {
             const px = Number.parseFloat(t.price)
             return (
               <li
@@ -63,16 +40,6 @@ export default function SectionHistory({ address }: { address: string | undefine
           })
         )}
       </ul>
-      {hasNextPage ? (
-        <button
-          type="button"
-          onClick={() => void fetchNextPage()}
-          disabled={isFetchingNextPage}
-          className="w-full rounded-lg bg-[#262626] py-2 text-xs font-medium text-white/80 hover:bg-[#2f2f2f] disabled:opacity-50"
-        >
-          {isFetchingNextPage ? 'Loading…' : 'Load more'}
-        </button>
-      ) : null}
     </div>
   )
 }

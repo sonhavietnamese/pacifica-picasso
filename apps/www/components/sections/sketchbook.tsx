@@ -1,22 +1,19 @@
 'use client'
 
 import { usePacificaOpenOrders } from '@/hooks/use-pacifica-open-orders'
-import { usePacificaPositions } from '@/hooks/use-pacifica-positions'
-import { useDrawLinesStore } from '@/lib/linelive'
 import { cn } from '@/lib/utils'
-import { useSketchbook } from '@/stores/sketchbook'
+import { useSketchbook as useSketchbookStore } from '@/stores/sketchbook'
 import { usePrivy } from '@privy-io/react-auth'
 import SectionHistory from './history'
 import SectionLivePosition from './live-position'
 import SectionOrders from './orders'
+import useSketchbook from '@/hooks/use-sketchbook'
 
 export function SectionSketchbook() {
-  const tab = useSketchbook((state) => state.tab)
-  const setTab = useSketchbook((state) => state.setTab)
+  const tab = useSketchbookStore((state) => state.tab)
+  const setTab = useSketchbookStore((state) => state.setTab)
   const { user } = usePrivy()
   const address = user?.wallet?.address
-
-  const drawLines = useDrawLinesStore((state) => state.lines)
 
   const {
     orders,
@@ -25,9 +22,7 @@ export function SectionSketchbook() {
     refetch: refetchOrders,
   } = usePacificaOpenOrders(address)
 
-  const { data: positions = [], isPending: isPositionsPending, error: positionsError } = usePacificaPositions(address)
-
-  const sketchbookError = positionsError?.message ?? null
+  const { livePositions, historyPositions } = useSketchbook(address)
 
   const createStopOrder = async () => {
     if (!user) return
@@ -120,15 +115,10 @@ export function SectionSketchbook() {
         </div>
       </div>
       <div className="w-full h-full rounded-xl overflow-auto hide-scrollbar">
-        {sketchbookError ? <p className="mb-2 text-sm text-red-400/90">{sketchbookError}</p> : null}
-        {address && tab === 'live' && isPositionsPending && !sketchbookError ? (
-          <p className="mb-2 text-xs text-white/40">Syncing sketchbook…</p>
-        ) : null}
-
         {tab === 'live' ? (
-          <SectionLivePosition address={address ?? ''} positions={positions} drawLines={drawLines} />
+          <SectionLivePosition positions={livePositions} />
         ) : tab === 'history' ? (
-          <SectionHistory address={address} />
+          <SectionHistory positions={historyPositions} />
         ) : tab === 'orders' ? (
           <SectionOrders orders={orders} isLoading={isOrdersLoading} error={ordersError} />
         ) : null}
