@@ -1,3 +1,5 @@
+'use server'
+
 import { env } from '@/env'
 import { connection, USDP_MINT } from '@/lib/solana'
 import {

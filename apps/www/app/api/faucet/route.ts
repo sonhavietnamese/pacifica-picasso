@@ -1,4 +1,3 @@
-// USDP faucet
 import { faucet } from '@/lib/faucet'
 import privy from '@/lib/privy'
 import { PublicKey } from '@solana/web3.js'
@@ -17,8 +16,6 @@ export async function POST(request: Request) {
   const publicKey = new PublicKey(wallet.address)
 
   const signature = await faucet(publicKey, MAX_AMOUNT)
-
-  console.log(signature)
 
   return Response.json({ message: 'USDP faucet', signature }, { status: 200 })
 }
