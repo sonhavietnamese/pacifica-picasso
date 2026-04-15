@@ -1,6 +1,5 @@
 'use client'
 
-import { env } from '@/env'
 import { useOpenOrders } from '@/hooks/use-open-orders'
 import { USDP_MINT } from '@/lib/solana'
 import { usePrivy, useSigners } from '@privy-io/react-auth'
@@ -30,7 +29,7 @@ export default function User() {
       address: user.wallet.address,
       signers: [
         {
-          signerId: env.NEXT_PUBLIC_PRIVY_AUTHORIZATION_ID,
+          signerId: process.env.NEXT_PUBLIC_PRIVY_AUTHORIZATION_ID ?? '',
         },
       ],
     })

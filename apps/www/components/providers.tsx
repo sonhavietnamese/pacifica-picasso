@@ -1,6 +1,5 @@
 'use client'
 
-import { env } from '@/env'
 import { SOLANA_CONFIG } from '@/lib/solana'
 import { PrivyProvider } from '@privy-io/react-auth'
 import { SolanaProvider } from '@solana/react-hooks'
@@ -13,8 +12,8 @@ export default function Providers({ children }: { children: ReactNode }): ReactN
   return (
     <QueryClientProvider client={queryClient}>
       <PrivyProvider
-        appId={env.NEXT_PUBLIC_PRIVY_APP_ID}
-        clientId={env.NEXT_PUBLIC_PRIVY_CLIENT_ID}
+        appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? ''}
+        clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID ?? ''}
         config={{
           embeddedWallets: {
             solana: {

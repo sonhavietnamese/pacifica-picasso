@@ -1,4 +1,3 @@
-import { env } from '@/env'
 import { connection, USDP_MINT } from '@/lib/solana'
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -15,7 +14,7 @@ let faucetWallet: Keypair | null = null
 
 function getFaucetWallet(): Keypair {
   if (!faucetWallet) {
-    faucetWallet = Keypair.fromSecretKey(bs58.decode(env.FAUCET_PRIVATE_KEY))
+    faucetWallet = Keypair.fromSecretKey(bs58.decode(process.env.FAUCET_PRIVATE_KEY ?? ''))
   }
   return faucetWallet
 }
@@ -80,14 +79,7 @@ export const faucet = async (recipient: PublicKey, amount: number, options: Tran
     )
   )
   transaction.add(
-    createTransferInstruction(
-      sourceAta,
-      destAta,
-      wallet.publicKey,
-      amountToRaw(amount, decimals),
-      [],
-      TOKEN_PROGRAM_ID
-    )
+    createTransferInstruction(sourceAta, destAta, wallet.publicKey, amountToRaw(amount, decimals), [], TOKEN_PROGRAM_ID)
   )
 
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
