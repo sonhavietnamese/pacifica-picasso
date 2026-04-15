@@ -11,7 +11,14 @@ import {
 import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js'
 import bs58 from 'bs58'
 
-export const FAUCET_WALLET = Keypair.fromSecretKey(bs58.decode(env.FAUCET_PRIVATE_KEY))
+let faucetWallet: Keypair | null = null
+
+function getFaucetWallet(): Keypair {
+  if (!faucetWallet) {
+    faucetWallet = Keypair.fromSecretKey(bs58.decode(env.FAUCET_PRIVATE_KEY))
+  }
+  return faucetWallet
+}
 
 function amountToRaw(amount: number, decimals: number): bigint {
   const factor = 10 ** decimals
@@ -19,17 +26,18 @@ function amountToRaw(amount: number, decimals: number): bigint {
 }
 
 export const transfer = async (recipient: PublicKey, amount: number) => {
+  const wallet = getFaucetWallet()
   const transaction = new Transaction().add(
     SystemProgram.transfer({
-      fromPubkey: FAUCET_WALLET.publicKey,
+      fromPubkey: wallet.publicKey,
       toPubkey: recipient,
       lamports: Math.floor(amount * LAMPORTS_PER_SOL),
     })
   )
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
   transaction.recentBlockhash = blockhash
-  transaction.feePayer = FAUCET_WALLET.publicKey
-  transaction.sign(FAUCET_WALLET)
+  transaction.feePayer = wallet.publicKey
+  transaction.sign(wallet)
   const signature = await connection.sendRawTransaction(transaction.serialize())
   await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight })
   return signature
@@ -47,12 +55,13 @@ export type TransferSplTokenOptions = {
  * Creates the recipient's associated token account idempotently (faucet pays rent).
  */
 export const faucet = async (recipient: PublicKey, amount: number, options: TransferSplTokenOptions = {}) => {
+  const wallet = getFaucetWallet()
   const mint = options.mint ?? USDP_MINT
   const decimals = options.decimals ?? (await getMint(connection, mint)).decimals
 
   const sourceAta = getAssociatedTokenAddressSync(
     mint,
-    FAUCET_WALLET.publicKey,
+    wallet.publicKey,
     false,
     TOKEN_PROGRAM_ID,
     ASSOCIATED_TOKEN_PROGRAM_ID
@@ -62,7 +71,7 @@ export const faucet = async (recipient: PublicKey, amount: number, options: Tran
   const transaction = new Transaction()
   transaction.add(
     createAssociatedTokenAccountIdempotentInstructionWithDerivation(
-      FAUCET_WALLET.publicKey,
+      wallet.publicKey,
       recipient,
       mint,
       false,
@@ -74,7 +83,7 @@ export const faucet = async (recipient: PublicKey, amount: number, options: Tran
     createTransferInstruction(
       sourceAta,
       destAta,
-      FAUCET_WALLET.publicKey,
+      wallet.publicKey,
       amountToRaw(amount, decimals),
       [],
       TOKEN_PROGRAM_ID
@@ -83,8 +92,8 @@ export const faucet = async (recipient: PublicKey, amount: number, options: Tran
 
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
   transaction.recentBlockhash = blockhash
-  transaction.feePayer = FAUCET_WALLET.publicKey
-  transaction.sign(FAUCET_WALLET)
+  transaction.feePayer = wallet.publicKey
+  transaction.sign(wallet)
 
   const signature = await connection.sendRawTransaction(transaction.serialize())
   await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight })
